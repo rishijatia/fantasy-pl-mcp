@@ -61,7 +61,9 @@ python -m fpl_mcp
 
 ### 3. Using with Claude Desktop
 
-Configure Claude Desktop to use the installed package:
+Configure Claude Desktop to use the installed package by editing your `claude_desktop_config.json` file:
+
+**Method 1: Using the Python module directly (most reliable)**
 
 ```json
 {
@@ -74,17 +76,21 @@ Configure Claude Desktop to use the installed package:
 }
 ```
 
-Or if you installed it with pip:
+**Method 2: Using the installed command with full path (if installed with pip)**
 
 ```json
 {
   "mcpServers": {
     "fantasy-pl": {
-      "command": "fpl-mcp"
+      "command": "/full/path/to/your/venv/bin/fpl-mcp"
     }
   }
 }
 ```
+
+Replace `/full/path/to/your/venv/bin/fpl-mcp` with the actual path to the executable. You can find this by running `which fpl-mcp` in your terminal after activating your virtual environment.
+
+> **Note:** Using just `"command": "fpl-mcp"` may result in a `spawn fpl-mcp ENOENT` error since Claude Desktop might not have access to your virtual environment's PATH. Using the full path or the Python module approach helps avoid this issue.
 
 ## Usage
 
@@ -167,6 +173,55 @@ To add new features:
 - The FPL API is not officially documented and may change without notice
 - Only read operations are currently supported
 - Authentication for private leagues is not yet implemented
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. "spawn fpl-mcp ENOENT" error in Claude Desktop
+
+This occurs because Claude Desktop cannot find the `fpl-mcp` executable in its PATH.
+
+**Solution:** Use one of these approaches:
+
+- Use the full path to the executable in your config file
+  ```json
+  {
+    "mcpServers": {
+      "fantasy-pl": {
+        "command": "/full/path/to/your/venv/bin/fpl-mcp"
+      }
+    }
+  }
+  ```
+
+- Use Python to run the module directly (preferred method)
+  ```json
+  {
+    "mcpServers": {
+      "fantasy-pl": {
+        "command": "python",
+        "args": ["-m", "fpl_mcp"]
+      }
+    }
+  }
+  ```
+
+#### 2. Server disconnects immediately
+
+If the server starts but immediately disconnects:
+
+- Check logs at `~/Library/Logs/Claude/mcp*.log` (macOS) or `%APPDATA%\Claude\logs\mcp*.log` (Windows)
+- Ensure all dependencies are installed
+- Try running the server manually with `python -m fpl_mcp` to see any errors
+
+#### 3. Server not showing in Claude Desktop
+
+If the hammer icon doesn't appear:
+
+- Restart Claude Desktop completely
+- Verify your `claude_desktop_config.json` has correct JSON syntax
+- Ensure the path to Python or the executable is absolute, not relative
 
 ## License
 
