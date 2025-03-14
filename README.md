@@ -104,6 +104,26 @@ Replace `/full/path/to/your/venv/bin/fpl-mcp` with the actual path to the execut
    - "What's the current gameweek status?"
    - "Show me the top 5 forwards by points"
 
+#### Fantasy-PL MCP Usage Instructions
+
+#### Basic Commands:
+- Compare players: "Compare [Player1] and [Player2]"
+- Find players: "Find players from [Team]" or "Search for [Player Name]"
+- Fixture difficulty: "Show upcoming fixtures for [Team]"
+- Captain advice: "Who should I captain between [Player1] and [Player2]?"
+
+#### Advanced Features:
+- Statistical analysis: "Compare underlying stats for [Player1] and [Player2]"
+- Form check: "Show me players in form right now"
+- Differential picks: "Suggest differentials under 10% ownership"
+- Team optimization: "Rate my team and suggest transfers"
+
+#### Tips:
+- Be specific with player names for accurate results
+- Include positions when searching (FWD, MID, DEF, GK)
+- For best captain advice, ask about form, fixtures, and underlying stats
+- Request comparison of specific metrics (xG, shots in box, etc.   
+
 ### MCP Inspector for Development
 
 For development and testing:
