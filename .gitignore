@@ -47,3 +47,5 @@ src/fpl_mcp/fpl_cache/
 .coverage
 htmlcov/
 .pytest_cache/
+
+uv.lock
