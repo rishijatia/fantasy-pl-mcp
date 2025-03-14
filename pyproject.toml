@@ -13,16 +13,35 @@ authors = [
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
 ]
-requires-python = ">=3.8"
+keywords = ["fantasy-premier-league", "fpl", "mcp", "claude", "ai", "football", "soccer"]
+requires-python = ">=3.10"
 dependencies = [
-    "mcp>=1.2.0",
+    "anthropic-mcp>=1.2.0",
     "httpx>=0.24.0",
     "python-dotenv",
     "diskcache",
     "jsonschema",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "isort>=5.10.0",
+    "mypy>=1.0.0",
+    "build",
+    "twine",
 ]
 
 [project.scripts]

@@ -1,5 +1,11 @@
 # Fantasy Premier League MCP Server
 
+[![PyPI version](https://badge.fury.io/py/fpl-mcp.svg)](https://badge.fury.io/py/fpl-mcp)
+[![Python Tests](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/python-test.yml/badge.svg)](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/python-test.yml)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fpl-mcp)](https://pypi.org/project/fpl-mcp/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://static.pepy.tech/badge/fpl-mcp)](https://pepy.tech/project/fpl-mcp)
+
 A Model Context Protocol (MCP) server that provides access to Fantasy Premier League (FPL) data and tools. This server allows you to interact with FPL data in Claude for Desktop and other MCP-compatible clients.
 
 ## Features
@@ -10,12 +16,23 @@ A Model Context Protocol (MCP) server that provides access to Fantasy Premier Le
 - **Player Search**: Find players by name or team
 - **Player Comparison**: Compare detailed statistics between any two players
 
+## Requirements
+
+- Python 3.10 or higher
+- Claude Desktop (for AI integration)
+
 ## Installation
 
 ### Option 1: Install from PyPI (Recommended)
 
 ```bash
 pip install fpl-mcp
+```
+
+### Option 1b: Install with Development Dependencies
+
+```bash
+pip install "fpl-mcp[dev]"
 ```
 
 ### Option 2: Install from GitHub
@@ -247,8 +264,34 @@ If the hammer icon doesn't appear:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+For more details, please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
 ## Acknowledgments
 
 - [Fantasy Premier League API](https://fantasy.premierleague.com/api/) for providing the data
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the connectivity standard
 - [Claude](https://claude.ai/) for the AI assistant capabilities
+
+## Citation
+
+If you use this package in your research or project, please consider citing it:
+
+```bibtex
+@software{fpl_mcp,
+  author = {Jatia, Rishi and Fantasy PL MCP Contributors},
+  title = {Fantasy Premier League MCP Server},
+  url = {https://github.com/rishijatia/fantasy-pl-mcp},
+  version = {0.1.0},
+  year = {2025},
+}
+```
