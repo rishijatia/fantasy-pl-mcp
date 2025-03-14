@@ -27,7 +27,7 @@ mcp = FastMCP(
 
 # Import modules that use the mcp variable
 from .fpl.api import api  
-from .fpl.resources import players, teams, gameweeks
+from .fpl.resources import players, teams, gameweeks, fixtures
 from .fpl.tools import comparisons
 
 # Register resources
@@ -76,6 +76,63 @@ async def get_all_gameweeks() -> List[Dict[str, Any]]:
     logger.info("Resource requested: fpl://gameweeks/all")
     gameweeks_data = await gameweeks.get_gameweeks_resource()
     return gameweeks_data
+
+@mcp.resource("fpl://fixtures")
+async def get_all_fixtures() -> List[Dict[str, Any]]:
+    """Get all fixtures for the current Premier League season"""
+    logger.info("Resource requested: fpl://fixtures")
+    fixtures_data = await fixtures.get_fixtures_resource()
+    return fixtures_data
+
+@mcp.resource("fpl://fixtures/gameweek/{gameweek_id}")
+async def get_gameweek_fixtures(gameweek_id: int) -> List[Dict[str, Any]]:
+    """Get fixtures for a specific gameweek"""
+    logger.info(f"Resource requested: fpl://fixtures/gameweek/{gameweek_id}")
+    fixtures_data = await fixtures.get_fixtures_resource(gameweek_id=gameweek_id)
+    return fixtures_data
+
+@mcp.resource("fpl://fixtures/team/{team_name}")
+async def get_team_fixtures(team_name: str) -> List[Dict[str, Any]]:
+    """Get fixtures for a specific team"""
+    logger.info(f"Resource requested: fpl://fixtures/team/{team_name}")
+    fixtures_data = await fixtures.get_fixtures_resource(team_name=team_name)
+    return fixtures_data
+
+@mcp.resource("fpl://players/{player_name}/fixtures")
+async def get_player_fixtures_by_name(player_name: str) -> Dict[str, Any]:
+    """Get upcoming fixtures for a specific player"""
+    logger.info(f"Resource requested: fpl://players/{player_name}/fixtures")
+    
+    # Find the player
+    player_matches = await players.find_players_by_name(player_name)
+    if not player_matches:
+        return {"error": f"No player found matching '{player_name}'"}
+    
+    player = player_matches[0]
+    player_fixtures = await fixtures.get_player_fixtures(player["id"])
+    
+    return {
+        "player": {
+            "name": player["name"],
+            "team": player["team"],
+            "position": player["position"]
+        },
+        "fixtures": player_fixtures
+    }
+
+@mcp.resource("fpl://gameweeks/blank")
+async def get_blank_gameweeks_resource() -> List[Dict[str, Any]]:
+    """Get information about upcoming blank gameweeks"""
+    logger.info("Resource requested: fpl://gameweeks/blank")
+    blank_gameweeks = await fixtures.get_blank_gameweeks()
+    return blank_gameweeks
+
+@mcp.resource("fpl://gameweeks/double")
+async def get_double_gameweeks_resource() -> List[Dict[str, Any]]:
+    """Get information about upcoming double gameweeks"""
+    logger.info("Resource requested: fpl://gameweeks/double")
+    double_gameweeks = await fixtures.get_double_gameweeks()
+    return double_gameweeks
 
 # Register tools
 @mcp.tool()
@@ -234,6 +291,151 @@ async def find_players(search_term: str, limit: int = 5) -> Dict[str, Any]:
         "search_term": search_term,
         "found_by": None,
         "results": []
+    }
+
+# Register tools for fixture analysis
+@mcp.tool()
+async def analyze_player_fixtures(player_name: str, num_fixtures: int = 5) -> Dict[str, Any]:
+    """Analyze upcoming fixtures for a player and provide a difficulty rating
+    
+    Args:
+        player_name: Player name to search for
+        num_fixtures: Number of upcoming fixtures to analyze (default: 5)
+    
+    Returns:
+        Analysis of player's upcoming fixtures with difficulty ratings
+    """
+    logger.info(f"Tool called: analyze_player_fixtures({player_name}, {num_fixtures})")
+    
+    # Find the player
+    player_matches = await players.find_players_by_name(player_name)
+    if not player_matches:
+        return {"error": f"No player found matching '{player_name}'"}
+    
+    player = player_matches[0]
+    analysis = await fixtures.analyze_player_fixtures(player["id"], num_fixtures)
+    
+    return analysis
+
+@mcp.tool()
+async def compare_player_fixtures(player1_name: str, player2_name: str, num_fixtures: int = 5) -> Dict[str, Any]:
+    """Compare upcoming fixtures for two players and suggest which has better fixtures
+    
+    Args:
+        player1_name: First player's name to search for
+        player2_name: Second player's name to search for
+        num_fixtures: Number of upcoming fixtures to analyze (default: 5)
+    
+    Returns:
+        Comparative analysis of both players' upcoming fixtures
+    """
+    logger.info(f"Tool called: compare_player_fixtures({player1_name}, {player2_name}, {num_fixtures})")
+    
+    # Find both players
+    player1_matches = await players.find_players_by_name(player1_name)
+    if not player1_matches:
+        return {"error": f"No player found matching '{player1_name}'"}
+    
+    player2_matches = await players.find_players_by_name(player2_name)
+    if not player2_matches:
+        return {"error": f"No player found matching '{player2_name}'"}
+    
+    player1 = player1_matches[0]
+    player2 = player2_matches[0]
+    
+    # Get fixture analysis for both players
+    player1_analysis = await fixtures.analyze_player_fixtures(player1["id"], num_fixtures)
+    player2_analysis = await fixtures.analyze_player_fixtures(player2["id"], num_fixtures)
+    
+    # Build comparison result
+    comparison = {
+        "players": {
+            player1["name"]: {
+                "team": player1["team"],
+                "position": player1["position"],
+                "price": f"£{player1['price']}m",
+                "fixtures_score": player1_analysis["fixture_analysis"]["difficulty_score"],
+                "fixture_analysis": player1_analysis["fixture_analysis"]["analysis"],
+            },
+            player2["name"]: {
+                "team": player2["team"],
+                "position": player2["position"],
+                "price": f"£{player2['price']}m",
+                "fixtures_score": player2_analysis["fixture_analysis"]["difficulty_score"],
+                "fixture_analysis": player2_analysis["fixture_analysis"]["analysis"],
+            }
+        },
+        "next_fixtures": {
+            player1["name"]: [
+                f"{f['opponent']} ({f['location'][0].upper()}) - Difficulty: {f['difficulty']}"
+                for f in player1_analysis["fixture_analysis"]["fixtures_analyzed"]
+            ],
+            player2["name"]: [
+                f"{f['opponent']} ({f['location'][0].upper()}) - Difficulty: {f['difficulty']}"
+                for f in player2_analysis["fixture_analysis"]["fixtures_analyzed"]
+            ]
+        }
+    }
+    
+    # Add recommendation
+    score1 = player1_analysis["fixture_analysis"]["difficulty_score"]
+    score2 = player2_analysis["fixture_analysis"]["difficulty_score"]
+    
+    if abs(score1 - score2) < 0.5:
+        comparison["recommendation"] = f"Both players have similar fixture difficulty"
+    elif score1 > score2:
+        comparison["recommendation"] = f"{player1['name']} has better upcoming fixtures"
+    else:
+        comparison["recommendation"] = f"{player2['name']} has better upcoming fixtures"
+    
+    return comparison
+
+@mcp.tool()
+async def get_blank_gameweeks(num_gameweeks: int = 5) -> Dict[str, Any]:
+    """Get information about upcoming blank gameweeks where teams don't have fixtures
+    
+    Args:
+        num_gameweeks: Number of upcoming gameweeks to check (default: 5)
+    
+    Returns:
+        Information about blank gameweeks and affected teams
+    """
+    logger.info(f"Tool called: get_blank_gameweeks({num_gameweeks})")
+    blank_gameweeks = await fixtures.get_blank_gameweeks(num_gameweeks)
+    
+    if not blank_gameweeks:
+        return {
+            "blank_gameweeks": [],
+            "summary": f"No blank gameweeks found in the next {num_gameweeks} gameweeks"
+        }
+    
+    return {
+        "blank_gameweeks": blank_gameweeks,
+        "summary": f"Found {len(blank_gameweeks)} blank gameweeks in the next {num_gameweeks} gameweeks"
+    }
+
+@mcp.tool()
+async def get_double_gameweeks(num_gameweeks: int = 5) -> Dict[str, Any]:
+    """Get information about upcoming double gameweeks where teams play multiple times
+    
+    Args:
+        num_gameweeks: Number of upcoming gameweeks to check (default: 5)
+    
+    Returns:
+        Information about double gameweeks and affected teams
+    """
+    logger.info(f"Tool called: get_double_gameweeks({num_gameweeks})")
+    double_gameweeks = await fixtures.get_double_gameweeks(num_gameweeks)
+    
+    if not double_gameweeks:
+        return {
+            "double_gameweeks": [],
+            "summary": f"No double gameweeks found in the next {num_gameweeks} gameweeks"
+        }
+    
+    return {
+        "double_gameweeks": double_gameweeks,
+        "summary": f"Found {len(double_gameweeks)} double gameweeks in the next {num_gameweeks} gameweeks"
     }
 
 # Register prompts
