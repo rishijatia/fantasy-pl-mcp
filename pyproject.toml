@@ -26,8 +26,7 @@ classifiers = [
 keywords = ["fantasy-premier-league", "fpl", "mcp", "claude", "ai", "football", "soccer"]
 requires-python = ">=3.10"
 dependencies = [
-    # Note: MCP package is required but installed separately
-    # See installation instructions for details
+    "mcp>=1.2.0",
     "httpx>=0.24.0",
     "python-dotenv",
     "diskcache",
@@ -43,6 +42,7 @@ dev = [
     "mypy>=1.0.0",
     "build",
     "twine",
+    "mcp[cli]>=1.2.0",
 ]
 
 [project.scripts]
