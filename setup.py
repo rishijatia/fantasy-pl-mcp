@@ -21,7 +21,7 @@ setup(
     ],
     python_requires=">=3.10",
     install_requires=[
-        "anthropic-mcp>=1.2.0",
+        "mcp>=1.2.0",
         "httpx>=0.24.0",
         "python-dotenv",
         "diskcache",

@@ -26,7 +26,8 @@ classifiers = [
 keywords = ["fantasy-premier-league", "fpl", "mcp", "claude", "ai", "football", "soccer"]
 requires-python = ">=3.10"
 dependencies = [
-    "anthropic-mcp>=1.2.0",
+    # Note: MCP package is required but installed separately
+    # See installation instructions for details
     "httpx>=0.24.0",
     "python-dotenv",
     "diskcache",
