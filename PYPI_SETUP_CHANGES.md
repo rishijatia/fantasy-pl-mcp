@@ -7,8 +7,8 @@ This document summarizes the changes made to prepare the Fantasy PL MCP project 
 ### 1. GitHub Actions Workflows
 
 - Added `publish-to-pypi.yml` for automated PyPI publishing on new releases
-- Fixed `python-test.yml` to correctly install the MCP dependency from GitHub
-- Updated Python version requirements in CI testing (now using Python 3.10+)
+- Created `package-check.yml` to verify package can be built without running tests
+- Simplified CI process to avoid dependency issues with MCP package
 
 ### 2. Package Metadata
 

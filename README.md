@@ -1,7 +1,7 @@
 # Fantasy Premier League MCP Server
 
 [![PyPI version](https://badge.fury.io/py/fpl-mcp.svg)](https://badge.fury.io/py/fpl-mcp)
-[![Python Tests](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/python-test.yml/badge.svg)](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/python-test.yml)
+[![Package Check](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml/badge.svg)](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fpl-mcp)](https://pypi.org/project/fpl-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://static.pepy.tech/badge/fpl-mcp)](https://pepy.tech/project/fpl-mcp)
