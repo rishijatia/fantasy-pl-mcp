@@ -223,19 +223,25 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
     # Get team and position data for the player
     teams_data = await api.get_teams()
     team_map = {t["id"]: t for t in teams_data}
+    logger.info("Analyze Player Fixtures: Team data loaded: %s", team_map)
     
     position_data = await api.get_bootstrap_static()
     position_map = {p["id"]: p for p in position_data.get("element_types", [])}
+    logger.info("Analyze Player Fixtures: Position data loaded: %s", position_map)
     
     # Map team name
+    logger.info("Searching for team name %s and position %s", player.get("team"), player.get("element_type"))
     team_id = player.get("team")
     team_info = team_map.get(team_id, {})
     team_name = team_info.get("name", "Unknown team")
+
     
     # Map position name
     position_id = player.get("element_type")
     position_info = position_map.get(position_id, {})
     position_code = position_info.get("singular_name_short", "Unknown position")
+
+    logger.info("Player %s plays as %s for %s", player.get("web_name"), position_code, team_name)
     
     # Make sure position is one of GK, DEF, MID, FWD
     position_mapping = {
@@ -300,8 +306,8 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
         "player": {
             "id": player_id,
             "name": player.get("web_name", "Unknown player"),
-            "team": player.get("team_name", "Unknown team"),
-            "position": player.get("element_type_name", "Unknown position"),
+            "team": team_name,
+            "position": position_code,
         },
         "fixture_analysis": {
             "fixtures_analyzed": fixtures,
