@@ -220,6 +220,38 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
         logger.warning(f"Player with ID {player_id} not found")
         return {"error": f"Player with ID {player_id} not found"}
     
+    # Get team and position data for the player
+    teams_data = await api.get_teams()
+    team_map = {t["id"]: t for t in teams_data}
+    logger.info("Analyze Player Fixtures: Team data loaded: %s", team_map)
+    
+    position_data = await api.get_bootstrap_static()
+    position_map = {p["id"]: p for p in position_data.get("element_types", [])}
+    logger.info("Analyze Player Fixtures: Position data loaded: %s", position_map)
+    
+    # Map team name
+    logger.info("Searching for team name %s and position %s", player.get("team"), player.get("element_type"))
+    team_id = player.get("team")
+    team_info = team_map.get(team_id, {})
+    team_name = team_info.get("name", "Unknown team")
+
+    
+    # Map position name
+    position_id = player.get("element_type")
+    position_info = position_map.get(position_id, {})
+    position_code = position_info.get("singular_name_short", "Unknown position")
+
+    logger.info("Player %s plays as %s for %s", player.get("web_name"), position_code, team_name)
+    
+    # Make sure position is one of GK, DEF, MID, FWD
+    position_mapping = {
+        "GKP": "GK",
+        "DEF": "DEF",
+        "MID": "MID", 
+        "FWD": "FWD"
+    }
+    position = position_mapping.get(position_code, position_code)
+    
     # Get player's fixtures
     fixtures = await get_player_fixtures(player_id, num_fixtures)
     if not fixtures:
@@ -227,8 +259,8 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
             "player": {
                 "id": player_id,
                 "name": player.get("web_name", "Unknown player"),
-                "team": player.get("team_name", "Unknown team"),
-                "position": player.get("element_type_name", "Unknown position"),
+                "team": team_name,
+                "position": position,
             },
             "fixture_analysis": {
                 "fixtures_analyzed": [],
@@ -274,8 +306,8 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
         "player": {
             "id": player_id,
             "name": player.get("web_name", "Unknown player"),
-            "team": player.get("team_name", "Unknown team"),
-            "position": player.get("element_type_name", "Unknown position"),
+            "team": team_name,
+            "position": position_code,
         },
         "fixture_analysis": {
             "fixtures_analyzed": fixtures,
@@ -435,3 +467,116 @@ async def get_double_gameweeks(num_gameweeks: int = 5) -> List[Dict[str, Any]]:
             })
     
     return double_gameweeks
+
+
+async def get_player_gameweek_history(player_ids: List[int], num_gameweeks: int = 5) -> Dict[str, Any]:
+    """Get recent gameweek history for multiple players.
+    
+    Args:
+        player_ids: List of player IDs to fetch history for
+        num_gameweeks: Number of recent gameweeks to include
+        
+    Returns:
+        Dictionary mapping player IDs to their gameweek histories
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Getting gameweek history for {len(player_ids)} players, {num_gameweeks} gameweeks")
+    
+    # Get current gameweek to determine range
+    gameweeks = await api.get_gameweeks()
+    current_gameweek = None
+    
+    for gw in gameweeks:
+        if gw.get("is_current"):
+            current_gameweek = gw.get("id")
+            break
+            
+    if current_gameweek is None:
+        # If no current gameweek found, try to find next gameweek
+        for gw in gameweeks:
+            if gw.get("is_next"):
+                current_gameweek = gw.get("id") - 1
+                break
+    
+    if current_gameweek is None:
+        logger.warning("Could not determine current gameweek")
+        return {"error": "Could not determine current gameweek"}
+    
+    # Calculate gameweek range
+    start_gameweek = max(1, current_gameweek - num_gameweeks + 1)
+    gameweek_range = list(range(start_gameweek, current_gameweek + 1))
+    logger.info(f"Analyzing gameweek range: {gameweek_range}")
+    
+    # Fetch history for each player
+    result = {}
+    
+    for player_id in player_ids:
+        try:
+            # Get player summary which includes history
+            player_summary = await api.get_player_summary(player_id)
+            
+            if not player_summary or "history" not in player_summary:
+                logger.warning(f"No history data found for player {player_id}")
+                continue
+                
+            # Filter to requested gameweeks and format
+            player_history = []
+            
+            for entry in player_summary["history"]:
+                round_num = entry.get("round")
+                if round_num in gameweek_range:
+                    player_history.append({
+                        "gameweek": round_num,
+                        "minutes": entry.get("minutes", 0),
+                        "points": entry.get("total_points", 0),
+                        "goals": entry.get("goals_scored", 0),
+                        "assists": entry.get("assists", 0),
+                        "clean_sheets": entry.get("clean_sheets", 0),
+                        "bonus": entry.get("bonus", 0),
+                        "opponent": await get_team_name_by_id(entry.get("opponent_team")),
+                        "was_home": entry.get("was_home", False),
+                        # Added additional stats as requested
+                        "expected_goals": entry.get("expected_goals", 0),
+                        "expected_assists": entry.get("expected_assists", 0),
+                        "expected_goal_involvements": entry.get("expected_goal_involvements", 0),
+                        "expected_goals_conceded": entry.get("expected_goals_conceded", 0),
+                        "transfers_in": entry.get("transfers_in", 0),
+                        "transfers_out": entry.get("transfers_out", 0),
+                        "selected": entry.get("selected", 0),
+                        "value": entry.get("value", 0) / 10.0 if "value" in entry else 0,
+                        "team_score": entry.get("team_h_score" if entry.get("was_home") else "team_a_score", 0),
+                        "opponent_score": entry.get("team_a_score" if entry.get("was_home") else "team_h_score", 0)
+                    })
+            
+            # Sort by gameweek
+            player_history.sort(key=lambda x: x["gameweek"])
+            result[player_id] = player_history
+            
+        except Exception as e:
+            logger.error(f"Error fetching history for player {player_id}: {e}")
+    
+    return {
+        "players": result,
+        "gameweeks": gameweek_range
+    }
+
+
+async def get_team_name_by_id(team_id: int) -> str:
+    """Get team name from team ID.
+    
+    Args:
+        team_id: Team ID
+        
+    Returns:
+        Team name or "Unknown team" if not found
+    """
+    if team_id is None:
+        return "Unknown team"
+        
+    teams_data = await api.get_teams()
+    
+    for team in teams_data:
+        if team.get("id") == team_id:
+            return team.get("name", "Unknown team")
+            
+    return "Unknown team"
