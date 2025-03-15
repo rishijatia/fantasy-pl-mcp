@@ -32,17 +32,7 @@ async def get_teams_resource() -> List[Dict[str, Any]]:
             "strength_defence_away": team["strength_defence_away"],
             
             # Performance stats
-            "position": team["position"],
-            "played": team["played"],
-            "win": team["win"],
-            "draw": team["draw"],
-            "loss": team["loss"],
-            "points": team["points"],
-            "form": team["form"],
-            
-            # Other stats
-            "team_division": team.get("team_division", None),
-            "unavailable": team.get("unavailable", False),
+            "position": team["position"]
         }
         
         teams.append(team_data)

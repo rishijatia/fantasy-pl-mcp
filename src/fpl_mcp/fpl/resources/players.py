@@ -20,6 +20,8 @@ async def get_players_resource(name_filter: Optional[str] = None, team_filter: O
     # Create team and position lookup maps
     team_map = {t["id"]: t for t in data["teams"]}
     position_map = {p["id"]: p for p in data["element_types"]}
+    logging.info(f"Team map: {team_map}")
+    logging.info(f"Position map: {position_map}")
     
     # Format player data
     players = []

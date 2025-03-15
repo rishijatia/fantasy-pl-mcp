@@ -1,13 +1,16 @@
 import time
 import os
 import pathlib
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar, List
 from diskcache import Cache
 import asyncio
 from functools import wraps
 import json
+import logging
 
 from ..config import CACHE_DIR, CACHE_TTL
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
@@ -124,3 +127,45 @@ def cached(key_prefix: str, ttl: Optional[int] = None):
             
         return wrapper
     return decorator
+
+
+async def get_cached_player_data():
+    """Get cached complete player dataset with computed fields.
+    
+    Returns:
+        Complete player dataset with additional computed fields
+    """
+    logger.info("Fetching cached player data with computed fields")
+    return await cache.get_or_fetch(
+        "complete_player_dataset",
+        fetch_func=fetch_and_prepare_all_players,
+        ttl=3600  # Refresh hourly
+    )
+
+async def fetch_and_prepare_all_players():
+    """Fetch all players and add computed fields.
+    
+    Returns:
+        Enhanced player dataset with computed fields
+    """
+    # Get raw player data from API
+    from .api import api
+    from .resources.players import get_players_resource
+    
+    # Fetch complete player dataset with all fields
+    logger.info("Fetching and preparing all players with computed fields")
+    all_players = await get_players_resource()
+    
+    # Add computed fields for each player
+    for player in all_players:
+        # Calculate value (points per million)
+        try:
+            points = float(player["points"]) if "points" in player else 0
+            price = float(player["price"]) if "price" in player else 0
+            player["value"] = round(points / price, 2) if price > 0 else 0
+        except (ValueError, TypeError, ZeroDivisionError):
+            player["value"] = 0
+            
+        # Other useful computed fields can be added here
+            
+    return all_players
