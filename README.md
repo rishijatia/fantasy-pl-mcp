@@ -1,4 +1,4 @@
-# Fantasy Premier League MCP Server
+2# Fantasy Premier League MCP Server
 
 [![PyPI version](https://badge.fury.io/py/fpl-mcp.svg)](https://badge.fury.io/py/fpl-mcp)
 [![Package Check](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml/badge.svg)](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml)
@@ -7,6 +7,15 @@
 [![Downloads](https://static.pepy.tech/badge/fpl-mcp)](https://pepy.tech/project/fpl-mcp)
 
 A Model Context Protocol (MCP) server that provides access to Fantasy Premier League (FPL) data and tools. This server allows you to interact with FPL data in Claude for Desktop and other MCP-compatible clients.
+
+## Supported Platforms
+
+- Claude Desktop
+- Cursor
+- Windsurf
+- Other MCP Compatible Desktop LLMs
+
+Mobile is currently not supported.
 
 ## Features
 
