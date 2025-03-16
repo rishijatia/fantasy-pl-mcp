@@ -1026,22 +1026,121 @@ async def compare_players(
     
     return comparison
 
+@mcp.prompt()
+def transfer_advice_prompt(budget: float, position: str = None, team_to_sell: str = None) -> str:
+    """Create a prompt for getting detailed FPL transfer advice
+    
+    Args:
+        budget: Available budget in millions (e.g., 8.5)
+        position: Optional position to target (e.g., MID, FWD, DEF, GKP)
+        team_to_sell: Optional team name if selling a player from that team
+    """
+    position_text = f"a {position}" if position else "any position"
+    team_text = f" to replace a player from {team_to_sell}" if team_to_sell else ""
+    
+    return (
+        f"I need transfer advice for my Fantasy Premier League team. "
+        f"I have £{budget}m to spend on {position_text}{team_text}. "
+        f"\n\nPlease recommend the best options considering:"
+        f"\n1. Current form and consistency"
+        f"\n2. Upcoming fixture difficulty"
+        f"\n3. Value for money compared to similar players"
+        f"\n4. Blank/double gameweeks that might affect performance"
+        f"\n5. Expected returns based on xG, xA, and other advanced metrics"
+        f"\n\nFor each recommendation, please explain your reasoning and any potential risks."
+    )
 
 @mcp.prompt()
-def player_analysis_prompt(player_name: str) -> str:
-    """Create a prompt for analyzing an FPL player"""
-    return f"Please analyze {player_name} as an FPL asset. I want to understand:\n" \
-           f"1. Current form and performance\n" \
-           f"2. Upcoming fixtures and their difficulty\n" \
-           f"3. Value for money compared to similar players\n" \
-           f"4. Whether I should consider buying, selling, or holding this player"
+def player_analysis_prompt(player_name: str, include_comparisons: bool = True) -> str:
+    """Create a prompt for analyzing an FPL player in depth
+    
+    Args:
+        player_name: Name of the player to analyze
+        include_comparisons: Whether to compare with similar players
+    """
+    comparison_text = (
+        "\n5. How they compare to similar players in their position and price range" 
+        if include_comparisons else ""
+    )
+    
+    return (
+        f"Please provide a comprehensive analysis of {player_name} as an FPL asset. "
+        f"I'd like to understand:"
+        f"\n\n1. Recent form, performance statistics, and underlying metrics (xG, xA)"
+        f"\n2. Upcoming fixtures and their difficulty ratings"
+        f"\n3. Value for money compared to their price point"
+        f"\n4. Consistency of returns and minutes played (rotation risks) {comparison_text}"
+        f"\n5. Consider other similar players in the same position and price range"
+        f"\n6. Any potential blank or double gameweeks that might affect their performance"
+        f"\n7. Any injury concerns or fitness issues"
+        f"\n8. Any other relevant factors that could impact their performance"
+        f"\n\nBased on this analysis, would you recommend buying, holding, or selling this player for the upcoming gameweeks?"
+    )
+
 
 @mcp.prompt()
-def transfer_advice_prompt(budget: float, position: str) -> str:
-    """Create a prompt for getting transfer advice"""
-    return f"I need transfer advice for my Fantasy Premier League team. " \
-           f"I'm looking for a {position} player with a budget of £{budget}m. " \
-           f"Please suggest the best options based on form, fixtures, and value."
+def team_rating_prompt(player_list: str, budget_remaining: float = 0.0) -> str:
+    """Create a prompt for rating and analyzing an FPL team
+    
+    Args:
+        player_list: Comma-separated list of players in the team
+        budget_remaining: Remaining budget in millions
+    """
+    return (
+        f"Please rate and analyze my Fantasy Premier League team consisting of the following players:\n\n{player_list}"
+        f"\n\nI have £{budget_remaining}m remaining in my budget."
+        f"\n\nPlease provide:"
+        f"\n1. An overall rating of my team (1-10)"
+        f"\n2. Strengths and weaknesses in my team structure"
+        f"\n3. Analysis of fixture coverage for the upcoming gameweeks"
+        f"\n4. Suggested improvements or transfers to consider based on player form, fixtures and value"
+        f"\n5. Players who might be rotation risks (based on minutes played) or have challenging fixtures"
+        f"\n6. Any players I should consider captaining in the upcoming gameweek"
+        f"\n7. Any injury concerns or fitness issues that might affect my players"
+        f"\n\nFor each recommendation, please explain your reasoning and any potential risks."
+    )
+
+
+@mcp.prompt()
+def differential_players_prompt(max_ownership: float = 10.0, budget: float = None) -> str:
+    """Create a prompt for finding differential players with low ownership
+    
+    Args:
+        max_ownership: Maximum ownership percentage to consider
+        budget: Optional maximum budget per player in millions
+    """
+    budget_text = f" with a maximum price of £{budget}m" if budget else ""
+    
+    return (
+        f"I'm looking for differential players with less than {max_ownership}% ownership{budget_text} "
+        f"who could provide good value in the coming gameweeks."
+        f"\n\nPlease suggest differentials for each position (GKP, DEF, MID, FWD) considering:"
+        f"\n1. Recent form and underlying performance statistics"
+        f"\n2. Upcoming fixture difficulty"
+        f"\n3. Expected minutes and rotation risk"
+        f"\n4. Set-piece involvement and penalty duties"
+        f"\n5. Team attacking/defensive strength"
+        f"\n\nFor each player, please explain why they might outperform their ownership percentage."
+    )
+
+@mcp.prompt()
+def chip_strategy_prompt(available_chips: str) -> str:
+    """Create a prompt for chip strategy advice
+    
+    Args:
+        available_chips: Comma-separated list of available chips (e.g., "Wildcard, Free Hit, Bench Boost")
+    """
+    return (
+        f"I still have the following FPL chips available: {available_chips}."
+        f"\n\nPlease advise on the optimal strategy for using these chips considering:"
+        f"\n1. Upcoming blank and double gameweeks"
+        f"\n2. Fixture difficulty swings for top teams"
+        f"\n3. Potential injury crises or international breaks"
+        f"\n4. The current stage of the season"
+        f"\n\nFor each chip, suggest specific gameweeks or scenarios when I should consider using them, "
+        f"and explain the reasoning behind your recommendations."
+    )
+
 
 # Main function for direct execution and entry point
 def main():
