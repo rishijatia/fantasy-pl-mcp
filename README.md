@@ -58,17 +58,6 @@ cd fantasy-pl-mcp
 pip install -e .
 ```
 
-### Option 4: Automated Setup for Claude Desktop
-
-The easiest way to set up with Claude Desktop:
-
-```bash
-# After cloning the repository
-python install_mcp.py
-```
-
-This automatically installs the package and configures Claude Desktop.
-
 ## Running the Server
 
 After installation, you have several options to run the server:
@@ -125,7 +114,7 @@ Replace `/full/path/to/your/venv/bin/fpl-mcp` with the actual path to the execut
 1. Start Claude for Desktop
 2. You should see FPL tools available via the hammer icon
 3. Example queries:
-   - "Compare Mohamed Salah and Erling Haaland"
+   - "Compare Mohamed Salah and Erling Haaland over the last 5 gameweeks"
    - "Find all Arsenal midfielders"
    - "What's the current gameweek status?"
    - "Show me the top 5 forwards by points"
@@ -163,45 +152,34 @@ npx @modelcontextprotocol/inspector python -m fpl_mcp
 ```
 
 ## Available Resources
-
 - `fpl://static/players` - All player data with comprehensive statistics
 - `fpl://static/players/{name}` - Player data by name search
 - `fpl://static/teams` - All Premier League teams
 - `fpl://static/teams/{name}` - Team data by name search
 - `fpl://gameweeks/current` - Current gameweek data
 - `fpl://gameweeks/all` - All gameweeks data
+- `fpl://fixtures` - All fixtures for the current season
+- `fpl://fixtures/gameweek/{gameweek_id}` - Fixtures for a specific gameweek
+- `fpl://fixtures/team/{team_name}` - Fixtures for a specific team
+- `fpl://players/{player_name}/fixtures` - Upcoming fixtures for a specific player
+- `fpl://gameweeks/blank` - Information about upcoming blank gameweeks
+- `fpl://gameweeks/double` - Information about upcoming double gameweeks
 
 ## Available Tools
-
-- `compare_players` - Compare detailed statistics between any two players
-- `find_players` - Search for players by name or team
+- `get_gameweek_status` - Get precise information about current, previous, and next gameweeks
+- `analyze_player_fixtures` - Analyze upcoming fixtures for a player with difficulty ratings
+- `get_blank_gameweeks` - Get information about upcoming blank gameweeks
+- `get_double_gameweeks` - Get information about upcoming double gameweeks
+- `analyze_players` - Filter and analyze FPL players based on multiple criteria
+- `analyze_fixtures` - Analyze upcoming fixtures for players, teams, or positions
+- `compare_players` - Compare multiple players across various metrics
 
 ## Prompt Templates
-
-- `player_analysis_prompt` - Create a prompt for analyzing an FPL player
+- `player_analysis_prompt` - Create a prompt for analyzing an FPL player in depth
 - `transfer_advice_prompt` - Get advice on player transfers based on budget and position
-
-## Project Structure
-
-```
-fantasy-pl-mcp/
-├── src/
-│   └── fpl_mcp/                    # Package directory
-│       ├── __init__.py             # Package version and imports
-│       ├── __main__.py             # Main entry point
-│       ├── config.py               # Configuration handling
-│       ├── fpl/                    # FPL API implementation
-│       │   ├── __init__.py
-│       │   ├── api.py              # FPL API client
-│       │   ├── cache.py            # Caching logic
-│       │   ├── rate_limiter.py     # Rate limiting for API calls
-│       │   ├── resources/          # MCP resources
-│       │   └── tools/              # MCP tools
-│       └── schemas/                # JSON schemas
-├── pyproject.toml                  # Modern Python packaging
-├── install_mcp.py                  # Claude Desktop installer
-└── scripts/                        # Utility scripts
-```
+- `team_rating_prompt` - Create a prompt for rating and analyzing an FPL team
+- `differential_players_prompt` - Create a prompt for finding differential players with low ownership
+- `chip_strategy_prompt` - Create a prompt for chip strategy advice
 
 ## Development
 
@@ -218,7 +196,9 @@ To add new features:
 
 - The FPL API is not officially documented and may change without notice
 - Only read operations are currently supported
-- Authentication for private leagues is not yet implemented
+- Fetching team information is not supported yet
+- Fetching your manager information is not supported yet (only public data supported)
+- Authentication for private leagues is not yet implemented (only public data supported)
 
 ## Troubleshooting
 
