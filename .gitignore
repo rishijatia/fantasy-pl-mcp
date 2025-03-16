@@ -27,6 +27,7 @@ ENV/
 .env
 
 # Project specific
+CLAUDE.md
 claude_instructions/
 server/fpl_cache/
 src/fpl_mcp/fpl_cache/
