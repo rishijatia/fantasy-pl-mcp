@@ -308,10 +308,6 @@ async def analyze_players(
     # Apply all filters
     filtered_players = []
     for player in all_players:
-        # Filter out inactive players (status "u" means unavailable)
-        if player.get("status") != "a":
-            continue
-            
         # Check position filter
         if normalized_position and player.get("position") != normalized_position:
             continue
@@ -352,6 +348,8 @@ async def analyze_players(
         except (ValueError, TypeError):
             # Skip form check if value can't be converted
             pass
+
+        player['status'] = "available" if player.get("status") == "a" else "unavailable"
             
         # Player passed all filters
         filtered_players.append(player)
@@ -568,17 +566,15 @@ async def analyze_fixtures(
         if not player_matches:
             return {"error": f"No player found matching '{entity_name}'"}
             
-        # Get first active player from matches
-        active_players = [p for p in player_matches if p.get("status") == "a"]
-        if not active_players:
-            return {"error": f"Found player '{entity_name}' but they are currently unavailable (inactive)"}
-            
+        active_players = [p for p in player_matches]
+
         player = active_players[0]
         result["player"] = {
             "id": player["id"],
             "name": player["name"],
             "team": player["team"],
-            "position": player["position"]
+            "position": player["position"],
+            "status": "available" if player["status"] == "a" else "unavailable"
         }
         
         # Get fixtures for player's team
@@ -791,9 +787,7 @@ async def compare_players(
             return {"error": f"No player found matching '{name}'"}
             
         # Filter to active players
-        active_matches = [p for p in matches if p.get("status") == "a"]
-        if not active_matches:
-            return {"error": f"Found player '{name}' but they are currently unavailable (inactive)"}
+        active_matches = [p for p in matches]
             
         # Use first active match
         player = active_matches[0]
@@ -807,7 +801,9 @@ async def compare_players(
                 "name": player["name"],
                 "team": player["team"],
                 "position": player["position"],
-                "price": player["price"]
+                "price": player["price"],
+                "status": "available" if player["status"] == "a" else "unavailable",
+                "news": player.get("news", ""),
             } for name, player in players_data.items()
         },
         "metrics_comparison": {}
