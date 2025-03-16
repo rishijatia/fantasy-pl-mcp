@@ -8,6 +8,9 @@
 
 A Model Context Protocol (MCP) server that provides access to Fantasy Premier League (FPL) data and tools. This server allows you to interact with FPL data in Claude for Desktop and other MCP-compatible clients.
 
+[![Fantasy Premier League MCP Demo](https://img.youtube.com/vi/QfOOOQ_jeMA/0.jpg)](https://youtu.be/QfOOOQ_jeMA)
+*Demo of the Fantasy Premier League MCP Server in action*
+
 ## Supported Platforms
 
 - Claude Desktop
