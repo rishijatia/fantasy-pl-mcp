@@ -5,6 +5,8 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fpl-mcp)](https://pypi.org/project/fpl-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://static.pepy.tech/badge/fpl-mcp)](https://pepy.tech/project/fpl-mcp)
+<a href="https://glama.ai/mcp/servers/2zxsxuxuj9">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/2zxsxuxuj9/badge" />
 
 A Model Context Protocol (MCP) server that provides access to Fantasy Premier League (FPL) data and tools. This server allows you to interact with FPL data in Claude for Desktop and other MCP-compatible clients.
 
