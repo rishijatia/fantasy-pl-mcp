@@ -21,7 +21,8 @@ CACHE_DIR = pathlib.Path(os.getenv("FPL_CACHE_DIR", str(pathlib.Path.home() / ".
 
 # FPL API configuration
 FPL_API_BASE_URL = "https://fantasy.premierleague.com/api"
-FPL_USER_AGENT = "Fantasy-PL-MCP/0.1.0"
+FPL_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+FPL_LOGIN_URL = "https://users.premierleague.com/accounts/login/"
 
 # Caching configuration
 CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # Default: 1 hour

@@ -6,6 +6,7 @@ import logging
 import asyncio
 import os
 import sys
+import atexit
 from typing import List, Dict, Any, Optional
 from collections import Counter
 
@@ -30,7 +31,7 @@ mcp = FastMCP(
 # Import modules that use the mcp variable
 from .fpl.api import api  
 from .fpl.resources import players, teams, gameweeks, fixtures
-from .fpl.tools import comparisons
+from .fpl.tools import comparisons, register_team_tools
 from .fpl.utils.position_utils import normalize_position
 from .fpl.cache import get_cached_player_data
 
@@ -137,6 +138,56 @@ async def get_double_gameweeks_resource() -> List[Dict[str, Any]]:
     logger.info("Resource requested: fpl://gameweeks/double")
     double_gameweeks = await fixtures.get_double_gameweeks()
     return double_gameweeks
+
+# Register team tools
+register_team_tools(mcp)
+
+# Add authentication check tool
+@mcp.tool()
+async def check_fpl_authentication() -> Dict[str, Any]:
+    """Check if FPL authentication is working correctly
+    
+    Returns:
+        Authentication status and basic team information
+    """
+    try:
+        from .fpl.auth_manager import get_auth_manager
+        
+        auth_manager = get_auth_manager()
+        team_id = auth_manager.team_id
+        
+        if not team_id:
+            return {
+                "authenticated": False,
+                "error": "No team ID found in credentials",
+                "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+            }
+        
+        # Try to get basic team info as authentication test
+        try:
+            entry_data = await auth_manager.get_entry_data()
+            
+            return {
+                "authenticated": True,
+                "team_name": entry_data.get("name"),
+                "manager_name": f"{entry_data.get('player_first_name')} {entry_data.get('player_last_name')}",
+                "overall_rank": entry_data.get("summary_overall_rank"),
+                "team_id": team_id
+            }
+        except Exception as e:
+            return {
+                "authenticated": False,
+                "error": f"Authentication failed: {str(e)}",
+                "setup_instructions": "Check your FPL credentials and ensure they are correct"
+            }
+            
+    except Exception as e:
+        logger.error(f"Authentication check failed: {e}")
+        return {
+            "authenticated": False,
+            "error": str(e),
+            "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+        }
 
 # Register tools
 @mcp.tool()
@@ -1137,6 +1188,31 @@ def chip_strategy_prompt(available_chips: str) -> str:
         f"and explain the reasoning behind your recommendations."
     )
 
+
+# Add cleanup for auth manager
+def cleanup_auth():
+    """Clean up authentication resources"""
+    try:
+        from .fpl.auth_manager import get_auth_manager
+        auth_manager = get_auth_manager()
+        
+        # Create an event loop if none exists
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the close method
+        if loop.is_running():
+            loop.create_task(auth_manager.close())
+        else:
+            loop.run_until_complete(auth_manager.close())
+    except Exception as e:
+        logger.error(f"Error during authentication cleanup: {e}")
+
+# Register cleanup
+atexit.register(cleanup_auth)
 
 # Main function for direct execution and entry point
 def main():

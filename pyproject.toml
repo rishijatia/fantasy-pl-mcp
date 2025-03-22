@@ -47,6 +47,7 @@ dev = [
 
 [project.scripts]
 fpl-mcp = "fpl_mcp.__main__:main"
+fpl-mcp-config = "fpl_mcp.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/rishijatia/fantasy-pl-mcp"
