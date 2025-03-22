@@ -31,7 +31,7 @@ mcp = FastMCP(
 # Import modules that use the mcp variable
 from .fpl.api import api  
 from .fpl.resources import players, teams, gameweeks, fixtures
-from .fpl.tools import comparisons, register_team_tools
+from .fpl.tools import comparisons, register_team_tools, register_manager_tools
 from .fpl.utils.position_utils import normalize_position
 from .fpl.cache import get_cached_player_data
 
@@ -139,8 +139,9 @@ async def get_double_gameweeks_resource() -> List[Dict[str, Any]]:
     double_gameweeks = await fixtures.get_double_gameweeks()
     return double_gameweeks
 
-# Register team tools
+# Register team and manager tools
 register_team_tools(mcp)
+register_manager_tools(mcp)
 
 # Add authentication check tool
 @mcp.tool()

@@ -31,7 +31,15 @@ async def get_team_for_gameweek(gameweek: Optional[int] = None, team_id: Optiona
     
     # Use current gameweek if not specified
     if gameweek is None:
-        gameweek = await api.get_current_gameweek()
+        current_gw_data = await api.get_current_gameweek()
+        gameweek = current_gw_data.get("id", 1)  # Extract just the ID
+    
+    # Ensure gameweek is an integer
+    try:
+        gameweek = int(gameweek)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid gameweek value: {gameweek}")
+        return {"error": f"Invalid gameweek value: {gameweek}"}
     
     # Get team data for the gameweek
     try:
