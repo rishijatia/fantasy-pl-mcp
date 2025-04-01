@@ -6,6 +6,7 @@ import logging
 import asyncio
 import os
 import sys
+import atexit
 from typing import List, Dict, Any, Optional
 from collections import Counter
 
@@ -30,7 +31,7 @@ mcp = FastMCP(
 # Import modules that use the mcp variable
 from .fpl.api import api  
 from .fpl.resources import players, teams, gameweeks, fixtures
-from .fpl.tools import comparisons
+from .fpl.tools import comparisons, register_team_tools, register_manager_tools, register_league_tools, register_player_tools
 from .fpl.utils.position_utils import normalize_position
 from .fpl.cache import get_cached_player_data
 
@@ -138,6 +139,59 @@ async def get_double_gameweeks_resource() -> List[Dict[str, Any]]:
     double_gameweeks = await fixtures.get_double_gameweeks()
     return double_gameweeks
 
+# Register team, manager, league, and player tools
+register_team_tools(mcp)
+register_manager_tools(mcp)
+register_league_tools(mcp)
+register_player_tools(mcp)
+
+# Add authentication check tool
+@mcp.tool()
+async def check_fpl_authentication() -> Dict[str, Any]:
+    """Check if FPL authentication is working correctly
+    
+    Returns:
+        Authentication status and basic team information
+    """
+    try:
+        from .fpl.auth_manager import get_auth_manager
+        
+        auth_manager = get_auth_manager()
+        team_id = auth_manager.team_id
+        
+        if not team_id:
+            return {
+                "authenticated": False,
+                "error": "No team ID found in credentials",
+                "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+            }
+        
+        # Try to get basic team info as authentication test
+        try:
+            entry_data = await auth_manager.get_entry_data()
+            
+            return {
+                "authenticated": True,
+                "team_name": entry_data.get("name"),
+                "manager_name": f"{entry_data.get('player_first_name')} {entry_data.get('player_last_name')}",
+                "overall_rank": entry_data.get("summary_overall_rank"),
+                "team_id": team_id
+            }
+        except Exception as e:
+            return {
+                "authenticated": False,
+                "error": f"Authentication failed: {str(e)}",
+                "setup_instructions": "Check your FPL credentials and ensure they are correct"
+            }
+            
+    except Exception as e:
+        logger.error(f"Authentication check failed: {e}")
+        return {
+            "authenticated": False,
+            "error": str(e),
+            "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+        }
+
 # Register tools
 @mcp.tool()
 async def get_gameweek_status() -> Dict[str, Any]:
@@ -199,13 +253,28 @@ async def analyze_player_fixtures(player_name: str, num_fixtures: int = 5) -> Di
     logger.info(f"Tool called: analyze_player_fixtures({player_name}, {num_fixtures})")
     
     # Handle case when a dictionary is passed instead of string (error case)
-    if isinstance(player_name, dict) and 'player_name' in player_name:
-        player_name = player_name['player_name']
+    if isinstance(player_name, dict):
+        if 'player_name' in player_name:
+            player_name = player_name['player_name']
+        elif 'query' in player_name:
+            player_name = player_name['query']
+        else:
+            # If we can't find a usable key, convert the dict to a string
+            player_name = str(player_name)
+    
+    # Handle case when num_fixtures is a dict
+    if isinstance(num_fixtures, dict):
+        if 'num_fixtures' in num_fixtures:
+            num_fixtures = num_fixtures['num_fixtures']
+        else:
+            # Default to 5 if we can't find a usable value
+            num_fixtures = 5
     
     # Find the player
     player_matches = await players.find_players_by_name(player_name)
     if not player_matches:
         return {"error": f"No player found matching '{player_name}'"}
+
     
     player = player_matches[0]
     analysis = await fixtures.analyze_player_fixtures(player["id"], num_fixtures)
@@ -223,6 +292,15 @@ async def get_blank_gameweeks(num_gameweeks: int = 5) -> Dict[str, Any]:
         Information about blank gameweeks and affected teams
     """
     logger.info(f"Tool called: get_blank_gameweeks({num_gameweeks})")
+    
+    # Handle case when num_gameweeks is a dictionary
+    if isinstance(num_gameweeks, dict):
+        if 'num_gameweeks' in num_gameweeks:
+            num_gameweeks = num_gameweeks['num_gameweeks']
+        else:
+            # Default to 5 if we can't find a usable value
+            num_gameweeks = 5
+            
     blank_gameweeks = await fixtures.get_blank_gameweeks(num_gameweeks)
     
     if not blank_gameweeks:
@@ -247,6 +325,15 @@ async def get_double_gameweeks(num_gameweeks: int = 5) -> Dict[str, Any]:
         Information about double gameweeks and affected teams
     """
     logger.info(f"Tool called: get_double_gameweeks({num_gameweeks})")
+    
+    # Handle case when num_gameweeks is a dictionary
+    if isinstance(num_gameweeks, dict):
+        if 'num_gameweeks' in num_gameweeks:
+            num_gameweeks = num_gameweeks['num_gameweeks']
+        else:
+            # Default to 5 if we can't find a usable value
+            num_gameweeks = 5
+            
     double_gameweeks = await fixtures.get_double_gameweeks(num_gameweeks)
     
     if not double_gameweeks:
@@ -297,6 +384,85 @@ async def analyze_players(
         Filtered player data with summary statistics
     """
     logger.info(f"Tool called: analyze_players({position}, {team}, ...)")
+    
+    # Handle dictionary parameters
+    if isinstance(position, dict):
+        if 'position' in position:
+            position = position['position']
+        else:
+            position = None
+            
+    if isinstance(team, dict):
+        if 'team' in team:
+            team = team['team']
+        else:
+            team = None
+    
+    if isinstance(min_price, dict):
+        if 'min_price' in min_price:
+            min_price = min_price['min_price']
+        else:
+            min_price = None
+            
+    if isinstance(max_price, dict):
+        if 'max_price' in max_price:
+            max_price = max_price['max_price']
+        else:
+            max_price = None
+            
+    if isinstance(min_points, dict):
+        if 'min_points' in min_points:
+            min_points = min_points['min_points']
+        else:
+            min_points = None
+            
+    if isinstance(min_ownership, dict):
+        if 'min_ownership' in min_ownership:
+            min_ownership = min_ownership['min_ownership']
+        else:
+            min_ownership = None
+            
+    if isinstance(max_ownership, dict):
+        if 'max_ownership' in max_ownership:
+            max_ownership = max_ownership['max_ownership']
+        else:
+            max_ownership = None
+            
+    if isinstance(form_threshold, dict):
+        if 'form_threshold' in form_threshold:
+            form_threshold = form_threshold['form_threshold']
+        else:
+            form_threshold = None
+            
+    if isinstance(include_gameweeks, dict):
+        if 'include_gameweeks' in include_gameweeks:
+            include_gameweeks = include_gameweeks['include_gameweeks']
+        else:
+            include_gameweeks = False
+            
+    if isinstance(num_gameweeks, dict):
+        if 'num_gameweeks' in num_gameweeks:
+            num_gameweeks = num_gameweeks['num_gameweeks']
+        else:
+            num_gameweeks = 5
+            
+    if isinstance(sort_by, dict):
+        if 'sort_by' in sort_by:
+            sort_by = sort_by['sort_by']
+        else:
+            sort_by = "total_points"
+            
+    if isinstance(sort_order, dict):
+        if 'sort_order' in sort_order:
+            sort_order = sort_order['sort_order']
+        else:
+            sort_order = "desc"
+            
+    if isinstance(limit, dict):
+        if 'limit' in limit:
+            limit = limit['limit']
+        else:
+            limit = 20
     
     # Get cached complete player dataset
     all_players = await get_cached_player_data()
@@ -527,10 +693,51 @@ async def analyze_fixtures(
     """
     logger.info(f"Tool called: analyze_fixtures({entity_type}, {entity_name}, ...)")
     
+    # Handle case when parameters are dictionaries
+    if isinstance(entity_type, dict):
+        if 'entity_type' in entity_type:
+            entity_type = entity_type['entity_type']
+        else:
+            entity_type = "player"  # Default
+    
+    if isinstance(entity_name, dict):
+        if 'entity_name' in entity_name:
+            entity_name = entity_name['entity_name']
+        elif 'player_name' in entity_name:
+            entity_name = entity_name['player_name']
+        elif 'query' in entity_name:
+            entity_name = entity_name['query']
+        else:
+            # Convert to string as fallback
+            entity_name = str(entity_name)
+    
+    # If entity_name is None, we can't proceed with certain entity types
+    if entity_name is None and entity_type in ["player", "team"]:
+        return {"error": f"Please provide a {entity_type} name to analyze"}
+    
+    if isinstance(num_gameweeks, dict):
+        if 'num_gameweeks' in num_gameweeks:
+            num_gameweeks = num_gameweeks['num_gameweeks']
+        else:
+            num_gameweeks = 5  # Default
+    
+    if isinstance(include_blanks, dict):
+        if 'include_blanks' in include_blanks:
+            include_blanks = include_blanks['include_blanks']
+        else:
+            include_blanks = True  # Default
+    
+    if isinstance(include_doubles, dict):
+        if 'include_doubles' in include_doubles:
+            include_doubles = include_doubles['include_doubles']
+        else:
+            include_doubles = True  # Default
+    
     # Normalize entity type
     entity_type = entity_type.lower()
     if entity_type not in ["player", "team", "position"]:
         return {"error": f"Invalid entity type: {entity_type}. Must be 'player', 'team', or 'position'"}
+
     
     # Get current gameweek
     gameweeks_data = await api.get_gameweeks()
@@ -775,6 +982,41 @@ async def compare_players(
         Detailed comparison of players across the specified metrics
     """
     logger.info(f"Tool called: compare_players({player_names}, ...)")
+    
+    # Handle case when parameters are dictionaries
+    if isinstance(player_names, dict):
+        # Try to extract player names from the dictionary
+        if 'player_names' in player_names:
+            player_names = player_names['player_names']
+        else:
+            return {"error": "Could not find player names in the provided data"}
+    
+    # Handle metrics as a dictionary
+    if isinstance(metrics, dict):
+        if 'metrics' in metrics:
+            metrics = metrics['metrics']
+        else:
+            # Use default metrics
+            metrics = ["total_points", "form", "goals_scored", "assists", "bonus"]
+    
+    # Handle other parameters as dictionaries
+    if isinstance(include_gameweeks, dict):
+        if 'include_gameweeks' in include_gameweeks:
+            include_gameweeks = include_gameweeks['include_gameweeks']
+        else:
+            include_gameweeks = False
+    
+    if isinstance(num_gameweeks, dict):
+        if 'num_gameweeks' in num_gameweeks:
+            num_gameweeks = num_gameweeks['num_gameweeks']
+        else:
+            num_gameweeks = 5
+    
+    if isinstance(include_fixture_analysis, dict):
+        if 'include_fixture_analysis' in include_fixture_analysis:
+            include_fixture_analysis = include_fixture_analysis['include_fixture_analysis']
+        else:
+            include_fixture_analysis = True
     
     if not player_names or len(player_names) < 2:
         return {"error": "Please provide at least two player names to compare"}
@@ -1137,6 +1379,31 @@ def chip_strategy_prompt(available_chips: str) -> str:
         f"and explain the reasoning behind your recommendations."
     )
 
+
+# Add cleanup for auth manager
+def cleanup_auth():
+    """Clean up authentication resources"""
+    try:
+        from .fpl.auth_manager import get_auth_manager
+        auth_manager = get_auth_manager()
+        
+        # Create an event loop if none exists
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the close method
+        if loop.is_running():
+            loop.create_task(auth_manager.close())
+        else:
+            loop.run_until_complete(auth_manager.close())
+    except Exception as e:
+        logger.error(f"Error during authentication cleanup: {e}")
+
+# Register cleanup
+atexit.register(cleanup_auth)
 
 # Main function for direct execution and entry point
 def main():

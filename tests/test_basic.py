@@ -31,7 +31,7 @@ def test_package_structure():
     # Check that package can be imported
     import fpl_mcp
     assert hasattr(fpl_mcp, "__version__"), "Package should have __version__ attribute"
-    assert fpl_mcp.__version__ == "0.1.0", "Package version should be 0.1.0"
+    assert fpl_mcp.__version__ == "0.1.3", "Package version should be 0.1.3"
 
 def test_config_module():
     """Test that the config module has the expected attributes."""

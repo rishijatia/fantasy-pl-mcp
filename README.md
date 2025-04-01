@@ -180,6 +180,10 @@ npx @modelcontextprotocol/inspector python -m fpl_mcp
 - `analyze_players` - Filter and analyze FPL players based on multiple criteria
 - `analyze_fixtures` - Analyze upcoming fixtures for players, teams, or positions
 - `compare_players` - Compare multiple players across various metrics
+- `check_fpl_authentication` - Check if FPL authentication is working correctly
+- `get_my_team` - View your authenticated team (requires authentication)
+- `get_team` - View any team with a specific ID (requires authentication)
+- `get_manager_info` - Get manager details (requires authentication)
 
 ## Prompt Templates
 - `player_analysis_prompt` - Create a prompt for analyzing an FPL player in depth
@@ -199,13 +203,53 @@ To add new features:
 3. Update the `__main__.py` file to register new resources and tools
 4. Test using the MCP Inspector before deploying to Claude for Desktop
 
+## Authentication
+
+To use features requiring authentication (like accessing your team or private leagues), you need to set up your FPL credentials:
+
+```bash
+# Run the credential setup tool
+fpl-mcp-config setup
+```
+
+This interactive tool will:
+1. Prompt for your FPL email, password, and team ID
+2. Let you choose between storing in config.json or .env file
+3. Save credentials securely to ~/.fpl-mcp/
+
+You can test your authentication with:
+```bash
+fpl-mcp-config test
+```
+
+Alternatively, you can manually configure authentication:
+1. Create `~/.fpl-mcp/.env` file with:
+   ```
+   FPL_EMAIL=your_email@example.com
+   FPL_PASSWORD=your_password
+   FPL_TEAM_ID=your_team_id
+   ```
+   
+2. Or create `~/.fpl-mcp/config.json`:
+   ```json
+   {
+     "email": "your_email@example.com",
+     "password": "your_password",
+     "team_id": "your_team_id"
+   }
+   ```
+
+3. Or set environment variables:
+   ```bash
+   export FPL_EMAIL=your_email@example.com
+   export FPL_PASSWORD=your_password
+   export FPL_TEAM_ID=your_team_id
+   ```
+
 ## Limitations
 
 - The FPL API is not officially documented and may change without notice
 - Only read operations are currently supported
-- Fetching team information is not supported yet
-- Fetching your manager information is not supported yet (only public data supported)
-- Authentication for private leagues is not yet implemented (only public data supported)
 
 ## Troubleshooting
 
