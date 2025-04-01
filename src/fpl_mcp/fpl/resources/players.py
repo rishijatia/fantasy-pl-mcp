@@ -99,7 +99,7 @@ async def get_players_resource(name_filter: Optional[str] = None, team_filter: O
         }
         
         players.append(player_data)
-    
+    logging.info(f"Formatted {len(players)} players")
     return players
 
 async def get_player_by_id(player_id: int) -> Optional[Dict[str, Any]]:
@@ -179,6 +179,7 @@ async def find_players_by_name(name: str, limit: int = 5) -> List[Dict[str, Any]
     
     # Split search term into parts for multi-part matching
     search_parts = search_term.split()
+
     
     # Store scored results
     scored_players = []
@@ -257,8 +258,7 @@ async def find_players_by_name(name: str, limit: int = 5) -> List[Dict[str, Any]
             scored_players.append((total_score, player))
     
     # Sort by score (highest first)
-    sorted_players = [player for _, player in sorted(scored_players, reverse=True)]
-    
+    sorted_players = [player for _, player in sorted(scored_players, key=lambda x: x[0], reverse=True)]
     # If no matches with good confidence, fall back to simple contains match
     if not sorted_players or (sorted_players and scored_players[0][0] < 30):
         fallback_players = [
