@@ -7,22 +7,20 @@ from typing import Dict, Any, List, Optional
 from ..auth_manager import get_auth_manager
 from ..api import api
 from ..cache import cache, cached
-from ...config import FPL_API_BASE_URL
+from ...config import FPL_API_BASE_URL, LEAGUE_RESULTS_LIMIT
 from .simplified_decision import get_simplified_league_decision_analysis
 
 logger = logging.getLogger(__name__)
 
 # Cache league standings for 1 hour
 @cached("league_standings", ttl=3600)
-async def get_league_standings_data(league_id: int, limit: int = 25, check_size: bool = False) -> Dict[str, Any]:
+async def get_league_standings_data(league_id: int) -> Dict[str, Any]:
     """
     Get raw league standings data from the FPL API
     
     Args:
         league_id: ID of the league to fetch
-        limit: Maximum number of teams to return (default: 25)
-        check_size: Whether to return an error if league size exceeds limit (default: False)
-        
+
     Returns:
         Raw league data from the API or error message
     """
@@ -34,15 +32,6 @@ async def get_league_standings_data(league_id: int, limit: int = 25, check_size:
     # Get league data
     try:
         data = await auth_manager.make_authed_request(url)
-        
-        # Check if the league has too many teams (only if check_size is True)
-        standings = data.get("standings", {}).get("results", [])
-        if check_size and len(standings) > limit:
-            return {
-                "error": f"League has {len(standings)} teams, which exceeds the limit of {limit}",
-                "suggestion": "Try a smaller league or create a custom league with fewer teams"
-            }
-        
         return data
     except Exception as e:
         logger.error(f"Error fetching league standings: {e}")
@@ -97,11 +86,17 @@ def parse_league_standings(data: Dict[str, Any]) -> Dict[str, Any]:
         }
         formatted_standings.append(team)
     
-    return {
+    response = {
         "league_info": league_info,
-        "standings": formatted_standings,
+        # if more than LEAGUE_RESULTS_LIMIT teams, only show top 25
+        "standings": formatted_standings[:LEAGUE_RESULTS_LIMIT],
         "total_teams": total_count,
     }
+    
+    if len(formatted_standings) > LEAGUE_RESULTS_LIMIT:
+        response["disclaimers"] = ["Limited to top 25 teams"]
+    
+    return response
 
 # Core function for getting historical data for multiple teams
 async def get_teams_historical_data(team_ids: List[int], start_gw: Optional[int] = None, end_gw: Optional[int] = None) -> Dict[str, Any]:
@@ -205,20 +200,16 @@ async def get_teams_historical_data(team_ids: List[int], start_gw: Optional[int]
         "success_rate": len(results) / len(team_ids) if team_ids else 0
     }
 
-async def _get_league_standings(league_id: int, limit: int = 25, check_size: bool = False) -> Dict[str, Any]:
+async def _get_league_standings(league_id: int) -> Dict[str, Any]:
     """
-    Get standings for a specified FPL league
-    
+    Get standings for a specified FPL league    
     Args:
         league_id: ID of the league to fetch
-        limit: Maximum number of teams to return (default: 25)
-        check_size: Whether to return an error if league size exceeds limit (default: False)
-        
     Returns:
         League information with standings and team details
     """
     # Get raw league data
-    data = await get_league_standings_data(league_id, limit, check_size)
+    data = await get_league_standings_data(league_id)
     
     # Check for errors
     if "error" in data:
@@ -228,8 +219,8 @@ async def _get_league_standings(league_id: int, limit: int = 25, check_size: boo
     parsed_data = parse_league_standings(data)
     
     # If we have too many teams but aren't checking size, limit the results
-    if not check_size and "standings" in parsed_data and len(parsed_data["standings"]) > limit:
-        parsed_data["standings"] = parsed_data["standings"][:limit]
+    if "standings" in parsed_data and len(parsed_data["standings"]) > LEAGUE_RESULTS_LIMIT:
+        parsed_data["standings"] = parsed_data["standings"][:LEAGUE_RESULTS_LIMIT]
         parsed_data["limited"] = True
     
     return parsed_data
@@ -237,8 +228,7 @@ async def _get_league_standings(league_id: int, limit: int = 25, check_size: boo
 async def _get_league_historical_performance(
     league_id: int, 
     start_gw: Optional[int] = None, 
-    end_gw: Optional[int] = None,
-    limit: int = 25
+    end_gw: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Get historical performance data for teams in a league
@@ -247,23 +237,21 @@ async def _get_league_historical_performance(
         league_id: ID of the league to analyze
         start_gw: Starting gameweek (defaults to 1)
         end_gw: Ending gameweek (defaults to current)
-        limit: Maximum number of teams to include (default: 25)
         
     Returns:
         Historical performance data for visualization
     """
-    # Get league standings - use a higher limit to get more data
-    FETCH_LIMIT = 50  # Higher limit for initial fetch, then we'll filter to top N
-    league_data = await _get_league_standings(league_id, FETCH_LIMIT, check_size=False)
+    # Get league standings
+    league_data = await _get_league_standings(league_id)
     
     # Check for errors
     if "error" in league_data:
         return league_data
     
-    # Limit to top N teams based on limit parameter
-    if "standings" in league_data and len(league_data["standings"]) > limit:
-        league_data["standings"] = league_data["standings"][:limit]
-        league_data["limited_to_top"] = limit
+    # Limit to top N teams based on config
+    if "standings" in league_data and len(league_data["standings"]) > LEAGUE_RESULTS_LIMIT:
+        league_data["standings"] = league_data["standings"][:LEAGUE_RESULTS_LIMIT]
+        league_data["limited_to_top"] = LEAGUE_RESULTS_LIMIT
     
     # Extract team IDs from the top teams
     team_ids = [team["team_id"] for team in league_data["standings"]]
@@ -373,8 +361,7 @@ async def _get_league_historical_performance(
 
 async def _get_league_team_composition(
     league_id: int,
-    gameweek: Optional[int] = None,
-    limit: int = 25
+    gameweek: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Get team composition analysis for a league, showing player ownership
@@ -383,23 +370,21 @@ async def _get_league_team_composition(
     Args:
         league_id: ID of the league to analyze
         gameweek: Gameweek to analyze (defaults to current)
-        limit: Maximum number of teams to include (default: 25)
         
     Returns:
         Team composition data structured for visualization
     """
-    # Get league standings - use a higher limit to get more data
-    FETCH_LIMIT = 50  # Higher limit for initial fetch, then we'll filter to top N
-    league_data = await _get_league_standings(league_id, FETCH_LIMIT, check_size=False)
+    # Get league standings
+    league_data = await _get_league_standings(league_id)
     
     # Check for errors
     if "error" in league_data:
         return league_data
     
-    # Limit to top N teams based on limit parameter
-    if "standings" in league_data and len(league_data["standings"]) > limit:
-        league_data["standings"] = league_data["standings"][:limit]
-        league_data["limited_to_top"] = limit
+    # Limit to top N teams based on config
+    if "standings" in league_data and len(league_data["standings"]) > LEAGUE_RESULTS_LIMIT:
+        league_data["standings"] = league_data["standings"][:LEAGUE_RESULTS_LIMIT]
+        league_data["limited_to_top"] = LEAGUE_RESULTS_LIMIT
     
     # Extract team IDs from the top teams
     team_ids = [team["team_id"] for team in league_data["standings"]]
@@ -627,8 +612,8 @@ async def _get_league_team_composition(
     )
     
     # Return visualization-friendly format with consistent player limits
-    # Use the team limit to determine the player limits
-    PLAYER_LIMIT = limit  # Use the same limit for players as for teams
+    # Use the configured limit to determine the player limits
+    PLAYER_LIMIT = LEAGUE_RESULTS_LIMIT  # Use the same limit for players as for teams
     
     return {
         "league_info": league_data["league_info"],
@@ -669,8 +654,7 @@ def get_captain_success_category(points: int) -> str:
 async def _get_league_fixture_analysis(
     league_id: int,
     start_gw: Optional[int] = None,
-    end_gw: Optional[int] = None,
-    limit: int = 25
+    end_gw: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Analyze upcoming fixtures for teams in a league
@@ -679,25 +663,23 @@ async def _get_league_fixture_analysis(
         league_id: ID of the league to analyze
         start_gw: Starting gameweek (defaults to current gameweek)
         end_gw: Ending gameweek (for future analysis)
-        limit: Maximum number of teams to include (default: 25)
         
     Returns:
         Fixture analysis data for visualization
     """
     logger.info(f"Analyzing fixtures for league {league_id}, gameweeks {start_gw} to {end_gw}")
     
-    # Get league standings - use a higher limit to get more data
-    FETCH_LIMIT = 50  # Higher limit for initial fetch, then we'll filter to top N
-    league_data = await _get_league_standings(league_id, FETCH_LIMIT, check_size=False)
+    # Get league standings
+    league_data = await _get_league_standings(league_id)
     
     # Check for errors
     if "error" in league_data:
         return league_data
         
-    # Limit to top N teams based on limit parameter
-    if "standings" in league_data and len(league_data["standings"]) > limit:
-        league_data["standings"] = league_data["standings"][:limit]
-        league_data["limited_to_top"] = limit
+    # Limit to top N teams based on config
+    if "standings" in league_data and len(league_data["standings"]) > LEAGUE_RESULTS_LIMIT:
+        league_data["standings"] = league_data["standings"][:LEAGUE_RESULTS_LIMIT]
+        league_data["limited_to_top"] = LEAGUE_RESULTS_LIMIT
     
     # Get current gameweek if not specified
     if start_gw is None:
@@ -746,9 +728,9 @@ async def _get_league_fixture_analysis(
     # Cache for API calls to avoid repetition
     team_picks_cache = {}
     
-    # Process only the top N teams based on the limit parameter
+    # Process only the top N teams based on the configured limit
     # This uses the rank from the standings to get only the top teams by rank
-    top_teams = league_data["standings"][:limit]
+    top_teams = league_data["standings"][:LEAGUE_RESULTS_LIMIT]
     logger.info(f"Analyzing fixtures for top {len(top_teams)} teams in the league")
     
     # Process each fantasy team
@@ -972,8 +954,7 @@ async def _get_league_analytics(
     league_id: int,
     analysis_type: str = "overview",
     start_gw: Optional[int] = None,
-    end_gw: Optional[int] = None,
-    limit: int = 25
+    end_gw: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Get rich analytics for a Fantasy Premier League mini-league
@@ -990,13 +971,12 @@ async def _get_league_analytics(
             - "fixtures": Fixture difficulty comparison
         start_gw: Starting gameweek (defaults to 1)
         end_gw: Ending gameweek (defaults to current)
-        limit: Maximum number of teams to include (default: 25)
         
     Returns:
         Rich analytics data structured for visualization
     """
     # Add logging for debugging
-    logger.info(f"Starting league analytics: {analysis_type} for league {league_id}, limit {limit}")
+    logger.info(f"Starting league analytics: {analysis_type} for league {league_id}")
     
     # Validate analysis type
     valid_types = ["overview", "historical", "team_composition", "decisions", "fixtures"]
@@ -1015,9 +995,8 @@ async def _get_league_analytics(
         logger.error(f"Error getting current gameweek: {e}")
         current_gw = 1
     
-    # Use a consistent limit for all analysis types
-    effective_limit = limit
-    logger.info(f"Using requested limit of {effective_limit} teams for {analysis_type} analysis")
+    # Use the configured limit for all analysis types
+    logger.info(f"Using configured limit of {LEAGUE_RESULTS_LIMIT} teams for {analysis_type} analysis")
     
     # Process gameweek range to ensure it's not too large
     effective_start_gw = start_gw
@@ -1081,7 +1060,7 @@ async def _get_league_analytics(
     logger.info(f"Fetching league standings for league {league_id}")
     try:
         # Don't check size limit, just fetch all and filter
-        league_data = await _get_league_standings(league_id, effective_limit, check_size=False)
+        league_data = await _get_league_standings(league_id)
         
         # Check for errors
         if "error" in league_data:
@@ -1098,20 +1077,20 @@ async def _get_league_analytics(
         if analysis_type == "overview" or analysis_type == "historical":
             # For overview analysis, use the regular function but with reduced range
             return await _get_league_historical_performance(
-                league_id, effective_start_gw, effective_end_gw, effective_limit
+                league_id, effective_start_gw, effective_end_gw
             )
             
         elif analysis_type == "team_composition":
             # For team composition, use specified gameweek
             # Previously this only used end_gw, but we'll now pass both for consistency
             return await _get_league_team_composition(
-                league_id, effective_end_gw, effective_limit
+                league_id, effective_end_gw
             )
             
         elif analysis_type == "decisions":
             # For decisions, use our new simplified analysis function
             return await get_simplified_league_decision_analysis(
-                league_id, effective_start_gw, effective_end_gw, effective_limit,
+                league_id, effective_start_gw, effective_end_gw,
                 _get_league_standings, get_teams_historical_data,
                 league_data=league_data  # Pass league data to avoid fetching again
             )
@@ -1119,7 +1098,7 @@ async def _get_league_analytics(
         elif analysis_type == "fixtures":
             # Call the league fixture analysis function
             return await _get_league_fixture_analysis(
-                league_id, effective_start_gw, effective_end_gw, effective_limit
+                league_id, effective_start_gw, effective_end_gw
             )
     except Exception as e:
         logger.error(f"Error in league analytics: {e}")
@@ -1137,26 +1116,24 @@ def register_tools(mcp):
     """Register league analytics tools with the MCP server"""
     
     @mcp.tool()
-    async def get_league_standings(league_id: int, limit: int = 25) -> Dict[str, Any]:
+    async def get_league_standings(league_id: int) -> Dict[str, Any]:
         """Get standings for a specified FPL league
         
         Args:
             league_id: ID of the league to fetch
-            limit: Maximum number of teams to return (default: 25)
             
         Returns:
             League information with standings and team details
         """
         # When directly using the tool, enforce size check
-        return await _get_league_standings(league_id, limit, check_size=True)
+        return await _get_league_standings(league_id)
     
     @mcp.tool()
     async def get_league_analytics(
         league_id: int,
         analysis_type: str = "overview",
         start_gw: Optional[int] = None,
-        end_gw: Optional[int] = None,
-        limit: int = 25
+        end_gw: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get rich analytics for a Fantasy Premier League mini-league
         
@@ -1172,9 +1149,8 @@ def register_tools(mcp):
                 - "fixtures": Fixture difficulty comparison
             start_gw: Starting gameweek (defaults to 1 or use "current-N" format)
             end_gw: Ending gameweek (defaults to current)
-            limit: Maximum number of teams to include (default: 25)
             
         Returns:
             Rich analytics data structured for visualization
         """
-        return await _get_league_analytics(league_id, analysis_type, start_gw, end_gw, limit)
+        return await _get_league_analytics(league_id, analysis_type, start_gw, end_gw)

@@ -13,7 +13,6 @@ async def get_simplified_league_decision_analysis(
     league_id: int,
     start_gw: int,
     end_gw: int,
-    limit: int,
     get_league_standings_func,
     get_teams_historical_data_func,
     league_data: Optional[Dict[str, Any]] = None
@@ -38,7 +37,7 @@ async def get_simplified_league_decision_analysis(
     # Get league standings if not provided
     if league_data is None:
         try:
-            league_data = await get_league_standings_func(league_id, limit)
+            league_data = await get_league_standings_func(league_id)
             
             if "error" in league_data:
                 return league_data

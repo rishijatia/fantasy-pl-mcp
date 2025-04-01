@@ -33,3 +33,6 @@ STATIC_SCHEMA_PATH = SCHEMAS_DIR / "static_schema.json"
 # Rate limiting configuration
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "20"))
 RATE_LIMIT_PERIOD_SECONDS = int(os.getenv("RATE_LIMIT_PERIOD_SECONDS", "60"))
+
+# League configuration
+LEAGUE_RESULTS_LIMIT = 25
