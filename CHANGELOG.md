@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-03-31
+
+### Added
+- Team ID support for accessing any team's data
+- FPL authentication system for private data access
+- Manager information tools with profile and performance data
+- Team details with player selection and captain choices
+- League support for both public and private mini-leagues
+- League analytics with historical performance and ownership trends
+- Team historical performance tracking across gameweeks
+- League fixture analysis for upcoming matches
+
 ## [0.1.3] - 2025-03-15
 
 ### Added

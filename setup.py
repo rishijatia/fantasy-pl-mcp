@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="fpl-mcp",
-    version="0.1.3",
+    version="0.1.4",
     author="Fantasy PL MCP Contributors",
     author_email="rishi.jatia96@gmail.com",
     description="An MCP server for Fantasy Premier League data",
