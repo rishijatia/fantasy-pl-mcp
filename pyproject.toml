@@ -31,6 +31,8 @@ dependencies = [
     "python-dotenv",
     "diskcache",
     "jsonschema",
+    "requests",
+    "cryptography",
 ]
 
 [project.optional-dependencies]

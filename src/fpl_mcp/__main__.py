@@ -23,8 +23,8 @@ logger = logging.getLogger("fpl-mcp-server")
 
 # Create MCP server
 mcp = FastMCP(
-    "Fantasy Premier League",
-    description="Access Fantasy Premier League data and tools",
+    name="Fantasy Premier League",
+    instructions="Access Fantasy Premier League data and tools",
     dependencies=["httpx", "diskcache", "jsonschema"],
 )
 
