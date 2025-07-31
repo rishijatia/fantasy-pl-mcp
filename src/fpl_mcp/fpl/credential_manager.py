@@ -54,7 +54,7 @@ class CredentialManager:
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=600000,
         )
         key = base64.urlsafe_b64encode(kdf.derive(key_material))
         return key
