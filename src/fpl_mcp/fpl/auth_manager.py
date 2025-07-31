@@ -1,17 +1,13 @@
 # src/fpl_mcp/fpl/auth_manager.py
-import os
-import json
 import logging
 import requests
 import asyncio
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Tuple, Dict, Any, Optional
-
-from dotenv import load_dotenv
+from typing import Dict, Any, Optional
 
 from .cache import cache
 from .rate_limiter import RateLimiter
+from .credential_manager import CredentialManager
 from ..config import (
     FPL_API_BASE_URL, 
     FPL_USER_AGENT,
@@ -24,9 +20,17 @@ class FPLAuthManager:
     """Manages FPL authentication with secure credential handling"""
     
     def __init__(self):
-        # Load credentials from various sources
-        self._email, self._password, self._team_id = self._load_credentials()
+        # Initialize credential manager
+        self._credential_manager = CredentialManager()
         
+        # Attempt to migrate legacy credentials on first run
+        self._credential_manager.migrate_legacy_credentials()
+        
+        # Load credentials from encrypted storage
+        self._email, self._password, self._team_id = self._credential_manager.load_credentials()
+        
+        logger.info("Team ID: %s", self._team_id)
+
         # Session management
         self._session = None
         self._last_auth_time = None
@@ -35,54 +39,16 @@ class FPLAuthManager:
         # Rate limiter for authenticated requests
         self._rate_limiter = RateLimiter()
     
-    def _load_credentials(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """Load credentials from various possible sources"""
-        # Check environment variables first (already loaded or .env)
-        load_dotenv()
-        email = os.getenv("FPL_EMAIL")
-        password = os.getenv("FPL_PASSWORD")
-        team_id = os.getenv("FPL_TEAM_ID")
-
-        logger.info(f"Checking .env variables for FPL credentials")
+    def set_credentials(self, email: str, password: str, team_id: str) -> None:
+        """Set and store new credentials securely"""
+        self._credential_manager.store_credentials(email, password, team_id)
+        self._email = email
+        self._password = password
+        self._team_id = team_id
         
-        if email and password and team_id:
-            logger.info("Loaded FPL credentials from environment variables")
-            return email, password, team_id
-            
-        logger.info("No FPL credentials found in environment variables")
-        logger.info("Checking for .env file in user's home directory")
-        # Check for .env file in user's home directory
-        home_env = os.path.join(os.path.expanduser("~"), ".fpl-mcp", ".env")
-        if os.path.exists(home_env):
-            load_dotenv(home_env)
-            email = os.getenv("FPL_EMAIL")
-            password = os.getenv("FPL_PASSWORD")
-            team_id = os.getenv("FPL_TEAM_ID")
-            if email and password and team_id:
-                logger.info(f"Loaded FPL credentials from {home_env}")
-                return email, password, team_id
-        
-
-        logger.info("No FPL credentials found in user home dir .env file")
-        logger.info("Checking json config file in user's home directory")
-
-        # Check for JSON config file
-        config_path = os.path.join(os.path.expanduser("~"), ".fpl-mcp", "config.json")
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r") as f:
-                    config = json.load(f)
-                    email = config.get("email")
-                    password = config.get("password")
-                    team_id = config.get("team_id")
-                    if email and password and team_id:
-                        logger.info(f"Loaded FPL credentials from {config_path}")
-                        return email, password, team_id
-            except Exception as e:
-                logger.error(f"Error loading config file: {e}")
-        
-        logger.warning("No FPL credentials found")
-        return None, None, None
+        # Clear any existing session to force re-authentication
+        self._session = None
+        self._last_auth_time = None
     
     @property
     def team_id(self) -> Optional[str]:
@@ -146,13 +112,9 @@ class FPLAuthManager:
             # Log the response status
             logger.info(f"Authentication response status: {response.status_code}")
             
-            # For debugging
-            logger.info(f"Session cookies: {self._session.cookies.get_dict()}")
-            
             # Check if login was successful
-            if not self._session.cookies.get_dict():
-                logger.error("No cookies received after authentication")
-                raise ValueError("Failed to authenticate with FPL - no cookies received")
+            if not response.status_code == 200:
+                raise ValueError("Failed to authenticate with FPL")
             
             self._last_auth_time = datetime.now()
             logger.info("Successfully authenticated with FPL")
