@@ -113,7 +113,7 @@ class FPLAuthManager:
             logger.info(f"Authentication response status: {response.status_code}")
             
             # Check if login was successful
-            if not response.status_code == 200:
+            if not (200 <= response.status_code < 300):
                 raise ValueError("Failed to authenticate with FPL")
             
             self._last_auth_time = datetime.now()
