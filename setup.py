@@ -26,10 +26,12 @@ setup(
         "python-dotenv",
         "diskcache",
         "jsonschema",
+        "cryptography>=3.4.0",
     ],
     entry_points={
         "console_scripts": [
             "fpl-mcp=fpl_mcp.__main__:main",
+            "fpl-mcp-config=fpl_mcp.cli:main",
         ],
     },
     package_data={

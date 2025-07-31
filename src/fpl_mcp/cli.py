@@ -7,11 +7,11 @@ import asyncio
 from pathlib import Path
 
 def setup_credentials():
-    """Interactive CLI for setting up FPL credentials"""
+    """Interactive CLI for setting up FPL credentials with encryption"""
     print("FPL MCP Server - Credential Setup")
     print("=================================")
     print("This will set up your FPL credentials for use with the MCP server.")
-    print("Your credentials will be stored in ~/.fpl-mcp/")
+    print("Your credentials will be encrypted and stored securely in ~/.fpl-mcp/")
     print()
     
     # Get credentials
@@ -24,49 +24,48 @@ def setup_credentials():
         print("Error: All fields are required.")
         return False
     
-    # Create config directory
-    config_dir = Path.home() / ".fpl-mcp"
-    config_dir.mkdir(exist_ok=True)
-    
-    # Ask how to store credentials
-    storage_method = input("Store credentials in [1] config.json or [2] .env file? (1/2): ")
-    
-    if storage_method == "2":
-        # Create .env file
-        env_path = config_dir / ".env"
-        with open(env_path, "w") as f:
-            f.write(f"FPL_EMAIL={email}\n")
-            f.write(f"FPL_PASSWORD={password}\n")
-            f.write(f"FPL_TEAM_ID={team_id}\n")
+    try:
+        # Import credential manager
+        from .fpl.credential_manager import CredentialManager
         
-        # Set secure permissions
-        os.chmod(env_path, 0o600)  # Only user can read/write
+        # Initialize credential manager and store credentials
+        credential_manager = CredentialManager()
+        credential_manager.store_credentials(email, password, team_id)
         
-        print(f"\nCredentials saved to {env_path}")
+        print("\nCredentials encrypted and saved successfully!")
+        print("Your password is now stored securely using encryption.")
+        
+        # Check if legacy credentials exist and offer to clean them up
+        legacy_files = []
+        config_dir = Path.home() / ".fpl-mcp"
+        
+        if (config_dir / ".env").exists():
+            legacy_files.append(str(config_dir / ".env"))
+        if (config_dir / "config.json").exists():
+            legacy_files.append(str(config_dir / "config.json"))
+            
+        if legacy_files:
+            print("\nLegacy credential files detected:")
+            for file in legacy_files:
+                print(f"  - {file}")
+            print("\nThese files contain plaintext credentials and are no longer needed.")
+            remove_legacy = input("Would you like to remove them? (y/N): ").lower()
+            
+            if remove_legacy == 'y':
+                for file in legacy_files:
+                    try:
+                        os.remove(file)
+                        print(f"Removed: {file}")
+                    except Exception as e:
+                        print(f"Could not remove {file}: {e}")
+        
         print("Configuration successful!")
         return True
-    else:
-        # Create config file (default)
-        config_path = config_dir / "config.json"
-        config = {
-            "email": email,
-            "password": password,
-            "team_id": team_id
-        }
         
-        try:
-            with open(config_path, "w") as f:
-                json.dump(config, f)
-            
-            # Set secure permissions
-            os.chmod(config_path, 0o600)  # Only user can read/write
-            
-            print(f"\nCredentials saved to {config_path}")
-            print("Configuration successful!")
-            return True
-        except Exception as e:
-            print(f"Error saving configuration: {e}")
-            return False
+    except Exception as e:
+        print(f"Error saving encrypted credentials: {e}")
+        print("You may need to install the cryptography library: pip install cryptography")
+        return False
 
 async def test_auth():
     """Test authentication with FPL API"""
