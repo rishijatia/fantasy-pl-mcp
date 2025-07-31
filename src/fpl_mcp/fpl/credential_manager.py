@@ -31,7 +31,17 @@ class CredentialManager:
     def _generate_key(self, salt: bytes) -> bytes:
         """Generate encryption key from system-specific data"""
         # Combine multiple system identifiers for key derivation
-        machine_id = str(uuid.getnode()).encode()
+        try:
+            node = uuid.getnode()
+            # Check if uuid.getnode() returned a random value (not a valid MAC address)
+            if (node >> 40) % 2:
+                logger.warning("uuid.getnode() returned a random value; falling back to platform.uname()")
+                machine_id = str(platform.uname()).encode()
+            else:
+                machine_id = str(node).encode()
+        except Exception as e:
+            logger.error(f"Failed to retrieve machine ID using uuid.getnode(): {e}")
+            machine_id = str(platform.uname()).encode()
         username = getpass.getuser().encode()
         home_path = str(Path.home()).encode()
         platform_info = platform.node().encode()
