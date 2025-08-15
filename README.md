@@ -5,6 +5,8 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fpl-mcp)](https://pypi.org/project/fpl-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://static.pepy.tech/badge/fpl-mcp)](https://pepy.tech/project/fpl-mcp)
+
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/rishijatia/fantasy-pl-mcp)](https://archestra.ai/mcp-catalog/rishijatia__fantasy-pl-mcp)
 <a href="https://glama.ai/mcp/servers/2zxsxuxuj9">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/2zxsxuxuj9/badge" />
 
