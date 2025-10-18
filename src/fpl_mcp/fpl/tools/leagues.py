@@ -1114,20 +1114,20 @@ async def _get_league_analytics(
 
 def register_tools(mcp):
     """Register league analytics tools with the MCP server"""
-    
+
     @mcp.tool()
     async def get_league_standings(league_id: int) -> Dict[str, Any]:
         """Get standings for a specified FPL league
-        
+
         Args:
             league_id: ID of the league to fetch
-            
+
         Returns:
             League information with standings and team details
         """
         # When directly using the tool, enforce size check
         return await _get_league_standings(league_id)
-    
+
     @mcp.tool()
     async def get_league_analytics(
         league_id: int,
@@ -1136,9 +1136,9 @@ def register_tools(mcp):
         end_gw: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get rich analytics for a Fantasy Premier League mini-league
-        
+
         Returns visualization-optimized data for various types of league analysis.
-        
+
         Args:
             league_id: ID of the league to analyze
             analysis_type: Type of analysis to perform:
@@ -1149,8 +1149,65 @@ def register_tools(mcp):
                 - "fixtures": Fixture difficulty comparison
             start_gw: Starting gameweek (defaults to 1 or use "current-N" format)
             end_gw: Ending gameweek (defaults to current)
-            
+
         Returns:
             Rich analytics data structured for visualization
         """
         return await _get_league_analytics(league_id, analysis_type, start_gw, end_gw)
+
+    @mcp.tool()
+    async def get_h2h_league_standings(
+        league_id: int,
+        page_new_entries: int = 1,
+        page_standings: int = 1
+    ) -> Dict[str, Any]:
+        """Get standings for a Head-to-Head FPL league
+
+        Args:
+            league_id: ID of the H2H league
+            page_new_entries: Page number for new entries (default: 1)
+            page_standings: Page number for standings (default: 1)
+
+        Returns:
+            H2H league standings with wins, draws, losses, and points
+        """
+        from ..resources.h2h_leagues import get_h2h_standings, parse_h2h_standings
+
+        data = await get_h2h_standings(league_id, page_new_entries, page_standings)
+        return parse_h2h_standings(data)
+
+    @mcp.tool()
+    async def get_h2h_league_fixtures(
+        league_id: int,
+        event: Optional[int] = None,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get fixtures/matches for a Head-to-Head FPL league
+
+        Args:
+            league_id: ID of the H2H league
+            event: Gameweek number (event ID). If None, returns all fixtures
+            page: Page number (default: 1)
+
+        Returns:
+            H2H league fixtures with match results and scores
+        """
+        from ..resources.h2h_leagues import get_h2h_fixtures, parse_h2h_fixtures
+
+        data = await get_h2h_fixtures(league_id, event, page)
+        return parse_h2h_fixtures(data)
+
+    @mcp.tool()
+    async def get_h2h_league_entries(league_id: int) -> Dict[str, Any]:
+        """Get all entries (teams) in a Head-to-Head FPL league
+
+        Args:
+            league_id: ID of the H2H league
+
+        Returns:
+            List of all teams/entries in the H2H league
+        """
+        from ..resources.h2h_leagues import get_h2h_entries, parse_h2h_entries
+
+        data = await get_h2h_entries(league_id)
+        return parse_h2h_entries(data)
