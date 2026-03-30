@@ -34,6 +34,10 @@ Mobile is currently not supported.
 - **Player Search**: Find players by name or team
 - **Player Comparison**: Compare detailed statistics between any two players
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/rishijatia-fantasy-pl-mcp).
+
 ## Requirements
 
 - Python 3.10 or higher
