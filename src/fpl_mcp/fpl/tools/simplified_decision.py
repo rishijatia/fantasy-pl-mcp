@@ -15,7 +15,8 @@ async def get_simplified_league_decision_analysis(
     end_gw: int,
     get_league_standings_func,
     get_teams_historical_data_func,
-    league_data: Optional[Dict[str, Any]] = None
+    league_data: Optional[Dict[str, Any]] = None,
+    limit: int = 5
 ) -> Dict[str, Any]:
     """
     Get simplified decision analysis for a league (optimized for performance)

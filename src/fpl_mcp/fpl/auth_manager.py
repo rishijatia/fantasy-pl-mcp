@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 from .cache import cache
-from .rate_limiter import RateLimiter
+from .rate_limiter import rate_limiter
 from .credential_manager import CredentialManager
 from ..config import (
     FPL_API_BASE_URL,
@@ -40,8 +40,8 @@ class FPLAuthManager:
         self._access_token = None
         self._access_token_expiry = None  # datetime when the access token expires
 
-        # Rate limiter for authenticated requests
-        self._rate_limiter = RateLimiter()
+        # Shared rate limiter so authed and public requests draw from one budget
+        self._rate_limiter = rate_limiter
 
     def set_credentials(self, refresh_token: str, team_id: str) -> None:
         """Set and store new credentials securely"""

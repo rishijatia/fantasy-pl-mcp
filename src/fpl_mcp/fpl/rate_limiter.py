@@ -2,6 +2,8 @@ import time
 import asyncio
 from typing import List
 
+from ..config import RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_PERIOD_SECONDS
+
 class RateLimiter:
     """
     A simple rate limiter to prevent excessive requests to the FPL API.
@@ -10,7 +12,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 20, per_seconds: int = 60):
         """
         Initialize the rate limiter.
-        
+
         Args:
             max_requests: Maximum number of requests allowed in the time window
             per_seconds: Time window in seconds
@@ -18,28 +20,36 @@ class RateLimiter:
         self.request_times: List[float] = []
         self.max_requests = max_requests
         self.time_window = per_seconds
-    
+        self._lock = asyncio.Lock()
+
     async def acquire(self) -> bool:
         """
         Acquire permission to make a request.
         Blocks until a request can be made if the rate limit is reached.
-        
+
         Returns:
             True when request permission is granted
         """
-        now = time.time()
-        
-        # Remove expired request timestamps
-        self.request_times = [t for t in self.request_times if now - t < self.time_window]
-        
-        # If we've reached the limit, wait until we can make another request
-        if len(self.request_times) >= self.max_requests:
-            # Calculate how long to wait (time until oldest request expires)
-            wait_time = self.time_window - (now - self.request_times[0])
-            await asyncio.sleep(max(0, wait_time))
-            # Recursively try again after waiting
-            return await self.acquire()
-        
-        # Add current time to request times and allow the request
-        self.request_times.append(time.time())
-        return True
+        while True:
+            async with self._lock:
+                now = time.time()
+
+                # Remove expired request timestamps
+                self.request_times = [t for t in self.request_times if now - t < self.time_window]
+
+                if len(self.request_times) < self.max_requests:
+                    self.request_times.append(now)
+                    return True
+
+                # Time until the oldest request leaves the window
+                wait_time = self.time_window - (now - self.request_times[0])
+
+            # Sleep outside the lock so other acquirers aren't blocked
+            await asyncio.sleep(max(0.01, wait_time))
+
+
+# Shared limiter so authenticated and public API calls draw from one budget
+rate_limiter = RateLimiter(
+    max_requests=RATE_LIMIT_MAX_REQUESTS,
+    per_seconds=RATE_LIMIT_PERIOD_SECONDS,
+)

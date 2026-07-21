@@ -3,6 +3,9 @@ import asyncio
 import os
 from unittest.mock import patch, MagicMock
 
+import httpx
+import respx
+
 # Test bootstrap static API
 @pytest.mark.asyncio
 async def test_bootstrap_static_api():
@@ -95,24 +98,18 @@ async def test_bootstrap_static_api():
         ]
     }
     
-    # Create a mock for the HTTP client
-    mock_response = MagicMock()
-    mock_response.json.return_value = mock_data
-    mock_response.raise_for_status = MagicMock()
-    
-    mock_client = MagicMock()
-    mock_client.__aenter__.return_value = mock_client
-    mock_client.__aexit__.return_value = None
-    mock_client.get.return_value = mock_response
-    
-    # Patch the httpx.AsyncClient to return our mock
-    with patch('httpx.AsyncClient', return_value=mock_client):
+    with respx.mock:
+        respx.get("https://fantasy.premierleague.com/api/bootstrap-static/").mock(
+            return_value=httpx.Response(200, json=mock_data)
+        )
+
         # Create API instance with minimal config to avoid loading schemas
         api = FPLAPI(schema_path="/nonexistent/path")
-        
+
         # Test fetching and validating bootstrap static data
         data = await api.get_bootstrap_static()
-        
+        await api.close()
+
         # Assertions
         assert "elements" in data
         assert len(data["elements"]) == 1
@@ -151,6 +148,7 @@ async def test_player_formatting():
                 "total_points": 200,
                 "points_per_game": "8.5",
                 "minutes": 1800,
+                "starts": 20,
                 "goals_scored": 20,
                 "assists": 10,
                 "clean_sheets": 5,
@@ -180,7 +178,7 @@ async def test_player_formatting():
         "teams": [
             {
                 "id": 14,
-                "name": "Liverpool", 
+                "name": "Liverpool",
                 "short_name": "LIV",
                 "code": 10
             }

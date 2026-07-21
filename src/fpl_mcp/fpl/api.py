@@ -6,13 +6,11 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .cache import cache, cached
-from .rate_limiter import RateLimiter
+from .rate_limiter import rate_limiter
 from ..config import (
-    FPL_API_BASE_URL, 
-    FPL_USER_AGENT, 
-    STATIC_SCHEMA_PATH, 
-    RATE_LIMIT_MAX_REQUESTS, 
-    RATE_LIMIT_PERIOD_SECONDS
+    FPL_API_BASE_URL,
+    FPL_USER_AGENT,
+    STATIC_SCHEMA_PATH,
 )
 
 # Set up logging
@@ -40,11 +38,10 @@ class FPLAPI:
         self.headers = {
             "User-Agent": user_agent
         }
-        self.rate_limiter = RateLimiter(
-            max_requests=RATE_LIMIT_MAX_REQUESTS,
-            per_seconds=RATE_LIMIT_PERIOD_SECONDS
-        )
-        
+        self.rate_limiter = rate_limiter
+        self._client: Optional[httpx.AsyncClient] = None
+
+
         # Load schema for bootstrap-static if available
         self.schema = None
         try:
@@ -55,29 +52,68 @@ class FPLAPI:
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.warning(f"Could not load schema: {e}")
     
-    async def _make_request(self, endpoint: str) -> Dict[str, Any]:
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get the shared HTTP client, creating it lazily on first use."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                headers=self.headers,
+                timeout=httpx.Timeout(15.0, connect=5.0),
+                transport=httpx.AsyncHTTPTransport(retries=2),
+                limits=httpx.Limits(max_connections=10),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the shared HTTP client."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
+
+    async def _make_request(self, endpoint: str, max_retries: int = 3) -> Dict[str, Any]:
         """
         Make an HTTP request to the FPL API.
-        
+
+        Retries on 429 and 5xx responses with exponential backoff.
+
         Args:
             endpoint: API endpoint to request (without base URL)
-            
+            max_retries: Maximum number of attempts before giving up
+
         Returns:
             JSON response data
-            
+
         Raises:
-            httpx.HTTPError: On HTTP error
+            httpx.HTTPError: On HTTP error after retries are exhausted
         """
-        # Acquire rate limit permission
-        await self.rate_limiter.acquire()
-        
         url = f"{self.base_url}/{endpoint}"
-        logger.debug(f"Making request to {url}")
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers)
-            response.raise_for_status()
-            return response.json()
+        client = self._get_client()
+
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries):
+            # Acquire rate limit permission for every attempt
+            await self.rate_limiter.acquire()
+            logger.debug(f"Making request to {url} (attempt {attempt + 1}/{max_retries})")
+
+            try:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code
+                # Only 429/5xx are worth retrying; 4xx client errors are permanent
+                if status != 429 and status < 500:
+                    raise
+                last_error = e
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                last_error = e
+
+            if attempt < max_retries - 1:
+                backoff = 2 ** attempt
+                logger.warning(f"Request to {url} failed ({last_error}); retrying in {backoff}s")
+                await asyncio.sleep(backoff)
+
+        assert last_error is not None
+        raise last_error
     
     def validate_data(self, data: Dict[str, Any], schema: Optional[Dict[str, Any]] = None) -> bool:
         """
