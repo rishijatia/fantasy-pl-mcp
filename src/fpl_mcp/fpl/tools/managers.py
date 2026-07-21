@@ -1,6 +1,6 @@
 # src/fpl_mcp/fpl/tools/managers.py
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from ..auth_manager import get_auth_manager
 
@@ -186,3 +186,57 @@ def register_tools(mcp):
             Manager info with leagues and performance stats
         """
         return await _get_manager_info(team_id)
+
+    @mcp.tool()
+    async def get_manager_transfer_history(
+        team_id: int,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """Get a manager's transfer history with player names and prices
+
+        Args:
+            team_id: FPL team ID to look up
+            limit: Maximum number of transfers to return (most recent first)
+
+        Returns:
+            Transfer history grouped by gameweek
+        """
+        from ..api import api
+        from ..cache import get_player_map
+        from ..utils.params import unwrap
+
+        team_id = unwrap(team_id, "team_id")
+        limit = unwrap(limit, "limit", default=50)
+
+        try:
+            transfers = await api.get_entry_transfers(int(team_id))
+        except Exception as e:
+            return {"error": f"Could not fetch transfers for team {team_id}: {e}"}
+
+        player_map = await get_player_map()
+
+        def player_name(pid):
+            return player_map.get(pid, {}).get("web_name", f"Player {pid}")
+
+        formatted = []
+        by_gameweek: Dict[int, List[Dict[str, Any]]] = {}
+        for t in transfers[:limit]:
+            entry = {
+                "gameweek": t.get("event"),
+                "player_in": player_name(t.get("element_in")),
+                "player_in_cost": t.get("element_in_cost", 0) / 10.0,
+                "player_out": player_name(t.get("element_out")),
+                "player_out_cost": t.get("element_out_cost", 0) / 10.0,
+                "time": t.get("time"),
+            }
+            formatted.append(entry)
+            by_gameweek.setdefault(entry["gameweek"], []).append(entry)
+
+        return {
+            "team_id": int(team_id),
+            "total_transfers": len(transfers),
+            "transfers": formatted,
+            "transfers_by_gameweek": {
+                str(gw): items for gw, items in sorted(by_gameweek.items(), reverse=True)
+            },
+        }

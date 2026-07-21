@@ -306,6 +306,70 @@ def register_tools(mcp):
             return {"error": str(e)}
 
     @mcp.tool()
+    async def get_my_current_team() -> Dict[str, Any]:
+        """Get your current team as shown on the transfers page, including
+        selling prices, chips, and transfer state (requires authentication)
+
+        Unlike get_my_team, this uses the authenticated my-team endpoint, so
+        it reflects pending changes and per-player purchase/selling prices.
+
+        Returns:
+            Current squad with prices, available chips, and transfer status
+        """
+        from ..cache import get_player_map
+
+        try:
+            auth_manager = get_auth_manager()
+            team_id = auth_manager.team_id
+
+            if not team_id:
+                return {
+                    "error": "No team ID found in credentials",
+                    "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+                }
+
+            data = await auth_manager.get_my_team(int(team_id))
+            player_map = await get_player_map()
+            positions = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
+
+            picks = []
+            for pick in data.get("picks", []):
+                pid = pick.get("element")
+                info = player_map.get(pid, {})
+                picks.append({
+                    "id": pid,
+                    "name": info.get("web_name", f"Player {pid}"),
+                    "position": positions.get(info.get("element_type"), "UNK"),
+                    "purchase_price": pick.get("purchase_price", 0) / 10.0,
+                    "selling_price": pick.get("selling_price", 0) / 10.0,
+                    "is_captain": pick.get("is_captain", False),
+                    "is_vice_captain": pick.get("is_vice_captain", False),
+                    "on_bench": pick.get("position", 0) > 11,
+                })
+
+            transfers = data.get("transfers", {})
+            return {
+                "team_id": int(team_id),
+                "picks": picks,
+                "chips": [
+                    {"name": c.get("name"), "status": c.get("status_for_entry")}
+                    for c in data.get("chips", [])
+                ],
+                "transfers": {
+                    "free_transfers_available": transfers.get("limit"),
+                    "made_this_gameweek": transfers.get("made", 0),
+                    "bank": transfers.get("bank", 0) / 10.0,
+                    "team_value": transfers.get("value", 0) / 10.0,
+                },
+            }
+        except Exception as e:
+            logger.error(f"Error in get_my_current_team: {e}")
+            return {
+                "error": str(e),
+                "suggestion": "This endpoint requires valid FPL credentials; run 'fpl-mcp-config setup'"
+            }
+
+    @mcp.tool()
     async def check_fpl_authentication() -> Dict[str, Any]:
         """Check if FPL authentication is working correctly
 

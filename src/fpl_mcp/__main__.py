@@ -25,10 +25,12 @@ mcp = FastMCP(
 # Import modules that use the mcp variable
 from .fpl.resources import players, teams, gameweeks, fixtures
 from .fpl.tools import (
+    register_advice_tools,
     register_analysis_tools,
     register_fixture_tools,
     register_gameweek_tools,
     register_league_tools,
+    register_live_tools,
     register_manager_tools,
     register_player_tools,
     register_team_tools,
@@ -146,6 +148,8 @@ register_player_tools(mcp)
 register_gameweek_tools(mcp)
 register_fixture_tools(mcp)
 register_analysis_tools(mcp)
+register_live_tools(mcp)
+register_advice_tools(mcp)
 
 # Register prompts
 @mcp.prompt()

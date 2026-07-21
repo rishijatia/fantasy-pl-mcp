@@ -217,10 +217,59 @@ class FPLAPI:
         """
         return await self._make_request(f"element-summary/{player_id}/")
         
+    @cached("live_event", ttl=60)  # Live points change often during matches
+    async def get_live_event_data(self, gameweek_id: int) -> Dict[str, Any]:
+        """
+        Get live player stats for a gameweek (points, minutes, bonus, etc.).
+
+        Args:
+            gameweek_id: Gameweek to fetch live data for
+
+        Returns:
+            Live event data with per-player stats
+        """
+        return await self._make_request(f"event/{gameweek_id}/live/")
+
+    @cached("event_status", ttl=60)
+    async def get_event_status(self) -> Dict[str, Any]:
+        """
+        Get bonus/league processing status for the active gameweek.
+
+        Returns:
+            Event status data
+        """
+        return await self._make_request("event-status/")
+
+    @cached("dream_team", ttl=600)
+    async def get_dream_team(self, gameweek_id: int) -> Dict[str, Any]:
+        """
+        Get the official dream team (highest-scoring XI) for a gameweek.
+
+        Args:
+            gameweek_id: Gameweek to fetch the dream team for
+
+        Returns:
+            Dream team data
+        """
+        return await self._make_request(f"dream-team/{gameweek_id}/")
+
+    @cached("entry_transfers", ttl=600)
+    async def get_entry_transfers(self, team_id: int) -> List[Dict[str, Any]]:
+        """
+        Get the full transfer history for a manager's team.
+
+        Args:
+            team_id: FPL team (entry) ID
+
+        Returns:
+            List of transfers, most recent first
+        """
+        return await self._make_request(f"entry/{team_id}/transfers/")
+
     async def get_players(self) -> List[Dict[str, Any]]:
         """
         Get all players data.
-        
+
         Returns:
             List of player data
         """

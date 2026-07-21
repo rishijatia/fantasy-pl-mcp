@@ -324,8 +324,71 @@ def register_tools(mcp):
         # Handle case when a dictionary is passed instead of string
         if isinstance(query, dict) and 'query' in query:
             query = query['query']
-            
+
         return await search_players(query, position, team, limit)
+
+    @mcp.tool()
+    async def get_price_changes(
+        direction: Optional[str] = None,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """Get players whose price changed in the current gameweek (risers and fallers)
+
+        Args:
+            direction: Optional filter, "risers" or "fallers" (default: both)
+            limit: Maximum number of players per direction
+
+        Returns:
+            Price risers and fallers with ownership and transfer momentum
+        """
+        from ..api import api
+        from ..utils.params import unwrap
+
+        direction = unwrap(direction, "direction", default=None)
+        limit = unwrap(limit, "limit", default=20)
+
+        if direction is not None:
+            direction = str(direction).lower()
+            if direction not in ("risers", "fallers"):
+                return {"error": f"Invalid direction: {direction}. Use 'risers' or 'fallers'"}
+
+        raw_players = await api.get_players()
+        teams = await api.get_teams()
+        team_names = {t["id"]: t.get("name", "Unknown") for t in teams}
+
+        def format_player(p):
+            return {
+                "id": p.get("id"),
+                "name": p.get("web_name"),
+                "team": team_names.get(p.get("team"), "Unknown"),
+                "price": p.get("now_cost", 0) / 10.0,
+                "change_this_gameweek": p.get("cost_change_event", 0) / 10.0,
+                "change_since_season_start": p.get("cost_change_start", 0) / 10.0,
+                "ownership_percent": p.get("selected_by_percent"),
+                "transfers_in_gameweek": p.get("transfers_in_event", 0),
+                "transfers_out_gameweek": p.get("transfers_out_event", 0),
+            }
+
+        risers = sorted(
+            (p for p in raw_players if p.get("cost_change_event", 0) > 0),
+            key=lambda p: (p.get("cost_change_event", 0), p.get("transfers_in_event", 0)),
+            reverse=True,
+        )
+        fallers = sorted(
+            (p for p in raw_players if p.get("cost_change_event", 0) < 0),
+            key=lambda p: (p.get("cost_change_event", 0), -p.get("transfers_out_event", 0)),
+        )
+
+        result = {"summary": {
+            "total_risers": len(risers),
+            "total_fallers": len(fallers),
+        }}
+        if direction in (None, "risers"):
+            result["risers"] = [format_player(p) for p in risers[:limit]]
+        if direction in (None, "fallers"):
+            result["fallers"] = [format_player(p) for p in fallers[:limit]]
+
+        return result
 
 
 # Register tools
