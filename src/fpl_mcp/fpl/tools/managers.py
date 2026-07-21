@@ -235,6 +235,7 @@ def register_tools(mcp):
         return {
             "team_id": int(team_id),
             "total_transfers": len(transfers),
+            "transfers_returned": len(formatted),
             "transfers": formatted,
             "transfers_by_gameweek": {
                 str(gw): items for gw, items in sorted(by_gameweek.items(), reverse=True)

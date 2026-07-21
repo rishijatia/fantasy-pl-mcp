@@ -186,10 +186,19 @@ async def test_get_manager_transfer_history_tool():
         result = await tools["get_manager_transfer_history"](team_id=12345)
 
     assert result["total_transfers"] == 2
+    assert result["transfers_returned"] == 2
     assert result["transfers"][0]["player_in"] == "Salah"
     assert result["transfers"][0]["player_out"] == "Raya"
     assert result["transfers"][0]["player_in_cost"] == 12.8
     assert set(result["transfers_by_gameweek"].keys()) == {"7", "6"}
+
+    # With a limit, total_transfers still reports the full API count
+    with patch_static(), \
+         patch("fpl_mcp.fpl.api.FPLAPI.get_entry_transfers", new=AsyncMock(return_value=transfers)):
+        limited = await tools["get_manager_transfer_history"](team_id=12345, limit=1)
+
+    assert limited["total_transfers"] == 2
+    assert limited["transfers_returned"] == 1
 
 
 async def test_get_price_changes_tool():
