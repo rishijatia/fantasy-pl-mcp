@@ -6,8 +6,10 @@ import tempfile
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 # Point the disk cache at a temporary directory BEFORE fpl_mcp is imported,
-# so tests never read or write the user's real cache.
-os.environ["FPL_CACHE_DIR"] = tempfile.mkdtemp(prefix="fpl-mcp-test-cache-")
+# so tests never read or write the user's real cache. Held in a module-level
+# global so the directory is removed when the test process exits.
+_cache_tmpdir = tempfile.TemporaryDirectory(prefix="fpl-mcp-test-cache-")
+os.environ["FPL_CACHE_DIR"] = _cache_tmpdir.name
 
 import pytest  # noqa: E402
 

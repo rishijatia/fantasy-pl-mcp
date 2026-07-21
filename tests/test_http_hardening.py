@@ -1,7 +1,7 @@
 """Tests for the shared HTTP client, timeouts, and retry behavior in FPLAPI."""
 
 import asyncio
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -52,7 +52,7 @@ async def test_retries_on_500_then_succeeds(fpl_api):
             httpx.Response(200, json={"ok": 1}),
         ]
 
-        with patch("fpl_mcp.fpl.api.asyncio.sleep", return_value=None):
+        with patch("fpl_mcp.fpl.api.asyncio.sleep", new_callable=AsyncMock):
             data = await fpl_api._make_request("bootstrap-static/")
 
         assert data == {"ok": 1}
@@ -68,7 +68,7 @@ async def test_retries_on_429_then_succeeds(fpl_api):
             httpx.Response(200, json={"ok": 1}),
         ]
 
-        with patch("fpl_mcp.fpl.api.asyncio.sleep", return_value=None):
+        with patch("fpl_mcp.fpl.api.asyncio.sleep", new_callable=AsyncMock):
             data = await fpl_api._make_request("bootstrap-static/")
 
         assert data == {"ok": 1}
@@ -80,11 +80,17 @@ async def test_gives_up_after_max_retries(fpl_api):
     with respx.mock:
         route = respx.get(BOOTSTRAP_URL).mock(return_value=httpx.Response(503))
 
-        with patch("fpl_mcp.fpl.api.asyncio.sleep", return_value=None):
+        with patch("fpl_mcp.fpl.api.asyncio.sleep", new_callable=AsyncMock):
             with pytest.raises(httpx.HTTPStatusError):
                 await fpl_api._make_request("bootstrap-static/", max_retries=3)
 
         assert route.call_count == 3
+    await _close(fpl_api)
+
+
+async def test_rejects_max_retries_below_one(fpl_api):
+    with pytest.raises(ValueError):
+        await fpl_api._make_request("bootstrap-static/", max_retries=0)
     await _close(fpl_api)
 
 
@@ -108,7 +114,7 @@ async def test_retries_on_timeout(fpl_api):
             httpx.Response(200, json={"ok": 1}),
         ]
 
-        with patch("fpl_mcp.fpl.api.asyncio.sleep", return_value=None):
+        with patch("fpl_mcp.fpl.api.asyncio.sleep", new_callable=AsyncMock):
             data = await fpl_api._make_request("bootstrap-static/")
 
         assert data == {"ok": 1}

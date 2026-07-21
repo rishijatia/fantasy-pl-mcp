@@ -26,15 +26,21 @@ async def test_blocks_when_limit_reached():
 async def test_concurrent_acquires_never_exceed_limit():
     """Under concurrency, no more than max_requests may land in one window."""
     limiter = RateLimiter(max_requests=5, per_seconds=1)
-    await asyncio.gather(*(limiter.acquire() for _ in range(12)))
+    times: list[float] = []
 
-    # Every recorded timestamp respects the budget: sort and check that
-    # request i and request i+5 are at least a window apart.
-    times = sorted(limiter.request_times)
-    all_times = times  # only the last window is retained; the invariant
-    # still holds for what remains
-    for i in range(len(all_times) - 5):
-        assert all_times[i + 5] - all_times[i] >= 0.9
+    async def acquire_and_record():
+        await limiter.acquire()
+        times.append(time.monotonic())
+
+    await asyncio.gather(*(acquire_and_record() for _ in range(12)))
+
+    # The limiter only retains the last window internally, so record every
+    # completion ourselves: request i and request i+5 must be at least a
+    # window apart or more than 5 requests landed inside one window.
+    times.sort()
+    assert len(times) == 12
+    for i in range(len(times) - 5):
+        assert times[i + 5] - times[i] >= 0.9
 
 
 def test_module_level_singleton_exists():

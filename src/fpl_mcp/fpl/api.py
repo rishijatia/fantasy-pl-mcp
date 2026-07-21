@@ -58,7 +58,6 @@ class FPLAPI:
             self._client = httpx.AsyncClient(
                 headers=self.headers,
                 timeout=httpx.Timeout(15.0, connect=5.0),
-                transport=httpx.AsyncHTTPTransport(retries=2),
                 limits=httpx.Limits(max_connections=10),
             )
         return self._client
@@ -69,7 +68,7 @@ class FPLAPI:
             await self._client.aclose()
         self._client = None
 
-    async def _make_request(self, endpoint: str, max_retries: int = 3) -> Dict[str, Any]:
+    async def _make_request(self, endpoint: str, max_retries: int = 3) -> Any:
         """
         Make an HTTP request to the FPL API.
 
@@ -80,11 +79,15 @@ class FPLAPI:
             max_retries: Maximum number of attempts before giving up
 
         Returns:
-            JSON response data
+            JSON response data (a dict or list, depending on the endpoint)
 
         Raises:
+            ValueError: If max_retries is less than 1
             httpx.HTTPError: On HTTP error after retries are exhausted
         """
+        if max_retries < 1:
+            raise ValueError(f"max_retries must be at least 1, got {max_retries}")
+
         url = f"{self.base_url}/{endpoint}"
         client = self._get_client()
 
@@ -112,7 +115,6 @@ class FPLAPI:
                 logger.warning(f"Request to {url} failed ({last_error}); retrying in {backoff}s")
                 await asyncio.sleep(backoff)
 
-        assert last_error is not None
         raise last_error
     
     def validate_data(self, data: Dict[str, Any], schema: Optional[Dict[str, Any]] = None) -> bool:
