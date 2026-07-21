@@ -202,6 +202,69 @@ class TestSetCredentials:
         assert sent["refresh_token"] == "rt-fresh"
 
 
+class TestUpdateCredentialsTool:
+    @pytest.fixture
+    def server(self, isolated_home, monkeypatch):
+        import fpl_mcp.__main__ as server_module
+        import fpl_mcp.fpl.auth_manager as am_module
+
+        # Reset the singleton so each test builds a manager from the isolated home.
+        monkeypatch.setattr(am_module, "_auth_manager", None)
+        return server_module
+
+    @staticmethod
+    def tool(server):
+        # FastMCP's decorator may wrap the function; unwrap if needed.
+        fn = server.update_fpl_credentials
+        return getattr(fn, "fn", fn)
+
+    def test_rejects_input_without_token(self, server):
+        result = asyncio.run(self.tool(server)("{not json"))
+        assert result["updated"] is False
+        assert "refresh token" in result["error"].lower()
+
+    def test_requires_team_id_when_none_stored(self, server):
+        result = asyncio.run(self.tool(server)("rt-fresh"))
+        assert result["updated"] is False
+        assert "team id" in result["error"].lower()
+
+    def test_stores_validates_and_reports(self, server, monkeypatch):
+        CredentialManager().store_credentials("rt-dead", "7701")
+        session = MagicMock()
+        session.post.return_value = token_response()
+        api_resp = MagicMock()
+        api_resp.json.return_value = {"picks": [{}] * 15}
+        session.get.return_value = api_resp
+        # set_credentials drops the current session, so intercept the rebuild.
+        monkeypatch.setattr(
+            "fpl_mcp.fpl.auth_manager.requests.Session", lambda: session
+        )
+
+        blob = json.dumps({"refresh_token": "rt-fresh", "access_token": "ignored"})
+        result = asyncio.run(self.tool(server)(blob))
+
+        assert result["updated"] is True
+        assert result["team_id"] == "7701"
+        assert result["squad_picks"] == 15
+        # The pasted token was used for the grant, and its rotation persisted.
+        sent = session.post.call_args.kwargs["data"]
+        assert sent["refresh_token"] == "rt-fresh"
+        assert CredentialManager().load_credentials() == ("rt-new", "7701")
+
+    def test_reports_validation_failure(self, server, monkeypatch):
+        CredentialManager().store_credentials("rt-dead", "7702")
+        session = MagicMock()
+        session.post.return_value = token_response(status=400)
+        monkeypatch.setattr(
+            "fpl_mcp.fpl.auth_manager.requests.Session", lambda: session
+        )
+
+        result = asyncio.run(self.tool(server)("rt-also-dead"))
+
+        assert result["updated"] is False
+        assert "failed validation" in result["error"]
+
+
 class TestAuthedRequests:
     def test_sends_x_api_authorization_header(self, isolated_home):
         CredentialManager().store_credentials("rt-old", TEAM_ID)
