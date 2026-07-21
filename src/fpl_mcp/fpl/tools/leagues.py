@@ -1043,16 +1043,6 @@ async def _get_league_analytics(
     if effective_start_gw > effective_end_gw:
         effective_start_gw, effective_end_gw = effective_end_gw, effective_start_gw
     
-    # Apply consistent gameweek range limit to prevent performance issues
-    gw_range = effective_end_gw - effective_start_gw + 1
-    # MAX_GW_RANGE = 5  # Use a consistent max range for all analysis types
-    
-    # if gw_range > MAX_GW_RANGE:
-    #     logger.info(f"Reducing gameweek range from {gw_range} to {MAX_GW_RANGE}")
-    #     effective_start_gw = max(1, effective_end_gw - MAX_GW_RANGE + 1)
-    
-    # logger.info(f"Final gameweek range: {effective_start_gw} to {effective_end_gw}")
-    
     # Get league standings first
     logger.info(f"Fetching league standings for league {league_id}")
     try:
