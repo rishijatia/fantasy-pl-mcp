@@ -41,7 +41,7 @@ class FPLCache:
                 self._locks[key] = asyncio.Lock()
             return self._locks[key]
 
-    async def get_or_fetch(self, key: str, fetch_func: Callable[[], Any], ttl: Optional[int] = None) -> Any:
+    async def get_or_fetch(self, key: str, fetch_func: Callable[[], Any], ttl: Optional[float] = None) -> Any:
         """
         Get from cache or fetch and cache the data.
         Uses locks to prevent concurrent fetches for the same key.
@@ -100,7 +100,7 @@ class FPLCache:
 cache = FPLCache()
 
 
-def cached(key_prefix: str, ttl: Optional[int] = None):
+def cached(key_prefix: str, ttl: Optional[float] = None):
     """
     Decorator for caching async function results.
     

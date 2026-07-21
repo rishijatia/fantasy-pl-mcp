@@ -48,5 +48,9 @@ RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "20"))
 RATE_LIMIT_PERIOD_SECONDS = int(os.getenv("RATE_LIMIT_PERIOD_SECONDS", "60"))
 
 # League configuration. Team fetches are parallelized, so the ceiling can be
-# higher than the old 25; keep a hard cap to stay polite to the FPL API.
-LEAGUE_RESULTS_LIMIT = int(os.getenv("LEAGUE_RESULTS_LIMIT", "50"))
+# higher than the old 25. LEAGUE_RESULTS_LIMIT is env-configurable but clamped
+# to a hard cap to stay polite to the FPL API.
+LEAGUE_RESULTS_HARD_CAP = 100
+LEAGUE_RESULTS_LIMIT = min(
+    int(os.getenv("LEAGUE_RESULTS_LIMIT", "50")), LEAGUE_RESULTS_HARD_CAP
+)
