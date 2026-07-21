@@ -89,9 +89,13 @@ class CredentialManager:
         decrypted_data = fernet.decrypt(encrypted_data)
         return json.loads(decrypted_data.decode())
 
-    def store_credentials(self, email: str, password: str, team_id: str) -> None:
-        """Store encrypted credentials to file"""
-        data = {"email": email, "password": password, "team_id": team_id}
+    def store_credentials(self, refresh_token: str, team_id: str) -> None:
+        """Store encrypted credentials to file.
+
+        FPL now authenticates via PingOne OIDC, so the durable secret is the
+        OIDC refresh token rather than an email/password pair.
+        """
+        data = {"refresh_token": refresh_token, "team_id": team_id}
 
         try:
             encrypted_data = self._encrypt_data(data)
@@ -109,8 +113,23 @@ class CredentialManager:
             logger.error(f"Failed to store encrypted credentials: {e}")
             raise
 
-    def load_credentials(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """Load credentials from various sources, preferring encrypted storage"""
+    def update_refresh_token(self, refresh_token: str) -> None:
+        """Persist a rotated refresh token, keeping the stored team_id.
+
+        PingOne rotates refresh tokens on use; persisting the new one keeps the
+        next run from being locked out.
+        """
+        _, team_id = self.load_credentials()
+        if not team_id:
+            logger.warning("Cannot persist rotated refresh token: no team_id stored")
+            return
+        self.store_credentials(refresh_token, team_id)
+
+    def load_credentials(self) -> Tuple[Optional[str], Optional[str]]:
+        """Load credentials, preferring encrypted storage.
+
+        Returns a (refresh_token, team_id) tuple.
+        """
 
         # First, try encrypted storage
         if self._encrypted_file.exists():
@@ -119,13 +138,19 @@ class CredentialManager:
                     encrypted_data = f.read()
 
                 data = self._decrypt_data(encrypted_data)
-                email = data.get("email")
-                password = data.get("password")
+                refresh_token = data.get("refresh_token")
                 team_id = data.get("team_id")
 
-                if email and password and team_id:
+                if refresh_token and team_id:
                     logger.info("Loaded credentials from encrypted storage")
-                    return email, password, team_id
+                    return refresh_token, team_id
+
+                # Encrypted file predates the OIDC migration (email/password).
+                if data.get("email") or data.get("password"):
+                    logger.warning(
+                        "Stored credentials use the retired email/password login; "
+                        "please re-run 'fpl-mcp-config setup' with a refresh token."
+                    )
 
             except Exception as e:
                 logger.error(f"Failed to decrypt credentials: {e}")
@@ -136,56 +161,57 @@ class CredentialManager:
 
     def _load_legacy_credentials(
         self,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """Load credentials from legacy plaintext sources"""
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Load credentials from legacy plaintext sources.
+
+        Only the refresh token and team id are usable now; any email/password
+        found here can no longer authenticate against PingOne.
+        """
         from dotenv import load_dotenv
 
         # Check environment variables first
         load_dotenv()
-        email = os.getenv("FPL_EMAIL")
-        password = os.getenv("FPL_PASSWORD")
+        refresh_token = os.getenv("FPL_REFRESH_TOKEN")
         team_id = os.getenv("FPL_TEAM_ID")
 
-        if email and password and team_id:
+        if refresh_token and team_id:
             logger.info("Loaded credentials from environment variables")
-            return email, password, team_id
+            return refresh_token, team_id
 
         # Check legacy .env file
         if self._legacy_env_file.exists():
             load_dotenv(self._legacy_env_file)
-            email = os.getenv("FPL_EMAIL")
-            password = os.getenv("FPL_PASSWORD")
+            refresh_token = os.getenv("FPL_REFRESH_TOKEN")
             team_id = os.getenv("FPL_TEAM_ID")
 
-            if email and password and team_id:
+            if refresh_token and team_id:
                 logger.info(f"Loaded credentials from {self._legacy_env_file}")
-                return email, password, team_id
+                return refresh_token, team_id
 
         # Check legacy JSON file
         if self._legacy_json_file.exists():
             try:
                 with open(self._legacy_json_file, "r") as f:
                     config = json.load(f)
-                    email = config.get("email")
-                    password = config.get("password")
+                    refresh_token = config.get("refresh_token")
                     team_id = config.get("team_id")
 
-                    if email and password and team_id:
+                    if refresh_token and team_id:
                         logger.info(f"Loaded credentials from {self._legacy_json_file}")
-                        return email, password, team_id
+                        return refresh_token, team_id
 
             except Exception as e:
                 logger.error(f"Error loading legacy JSON config: {e}")
 
         logger.warning("No credentials found in any source")
-        return None, None, None
+        return None, None
 
     def migrate_legacy_credentials(self) -> bool:
-        """Migrate plaintext credentials to encrypted storage"""
+        """Migrate plaintext refresh-token credentials to encrypted storage"""
         # Load from legacy sources
-        email, password, team_id = self._load_legacy_credentials()
+        refresh_token, team_id = self._load_legacy_credentials()
 
-        if not (email and password and team_id):
+        if not (refresh_token and team_id):
             logger.info("No legacy credentials found to migrate")
             return False
 
@@ -196,13 +222,7 @@ class CredentialManager:
 
         try:
             # Store in encrypted format
-            self.store_credentials(email, password, team_id)
-
-            # Optionally remove legacy files (commented out for safety)
-            # if self._legacy_env_file.exists():
-            #     self._legacy_env_file.unlink()
-            # if self._legacy_json_file.exists():
-            #     self._legacy_json_file.unlink()
+            self.store_credentials(refresh_token, team_id)
 
             logger.info("Successfully migrated legacy credentials to encrypted storage")
             logger.info("Legacy credential files preserved for backup")
@@ -214,8 +234,8 @@ class CredentialManager:
 
     def has_credentials(self) -> bool:
         """Check if any credentials are available"""
-        email, password, team_id = self.load_credentials()
-        return bool(email and password and team_id)
+        refresh_token, team_id = self.load_credentials()
+        return bool(refresh_token and team_id)
 
     def clear_credentials(self) -> None:
         """Clear encrypted credentials"""
