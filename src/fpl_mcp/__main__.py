@@ -198,9 +198,13 @@ async def update_fpl_credentials(refresh_token: str, team_id: str = "") -> Dict[
 
     Use this when authenticated FPL tools fail with an invalid/expired refresh
     token error. Ask the user to fetch a fresh token first: log in at
-    https://fantasy.premierleague.com, open DevTools (F12) -> Application ->
-    Local storage -> https://fantasy.premierleague.com, click the key starting
-    with 'oidc.user:', and copy its whole JSON value.
+    https://fantasy.premierleague.com, open the DevTools Console (F12), run
+
+        copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('oidc.user:')))).refresh_token)
+
+    (typing 'allow pasting' first if Chrome refuses), and paste the clipboard
+    contents here. Copying the whole 'oidc.user:...' JSON value from DevTools ->
+    Application -> Local storage works too.
 
     Args:
         refresh_token: The copied oidc.user JSON value (or just its

@@ -227,10 +227,16 @@ This interactive tool will:
 
 **Getting your refresh token:**
 1. Log in at https://fantasy.premierleague.com in your browser.
-2. Open DevTools (F12) → Application → Local storage → `https://fantasy.premierleague.com`.
-3. Click the key starting with `oidc.user:` and copy its whole JSON value.
-4. Paste it when prompted — setup extracts the `refresh_token` field automatically
-   (pasting just the `refresh_token` value also works).
+2. Open the DevTools Console (F12 → Console) and run:
+   ```js
+   copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('oidc.user:')))).refresh_token)
+   ```
+   (If Chrome refuses, type `allow pasting` in the console first.) The refresh
+   token is now on your clipboard — paste it when prompted.
+3. Alternatively: DevTools → Application → Local storage →
+   `https://fantasy.premierleague.com`, copy the whole JSON value of the key
+   starting with `oidc.user:` and paste that instead — setup extracts the
+   `refresh_token` field automatically.
 
 Run `fpl-mcp-config test` right after setup: the first exchange claims the token
 before your browser session can supersede it, and rotates it so the copy in your
