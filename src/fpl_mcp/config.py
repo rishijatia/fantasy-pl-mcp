@@ -47,5 +47,6 @@ STATIC_SCHEMA_PATH = SCHEMAS_DIR / "static_schema.json"
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "20"))
 RATE_LIMIT_PERIOD_SECONDS = int(os.getenv("RATE_LIMIT_PERIOD_SECONDS", "60"))
 
-# League configuration
-LEAGUE_RESULTS_LIMIT = 25
+# League configuration. Team fetches are parallelized, so the ceiling can be
+# higher than the old 25; keep a hard cap to stay polite to the FPL API.
+LEAGUE_RESULTS_LIMIT = int(os.getenv("LEAGUE_RESULTS_LIMIT", "50"))

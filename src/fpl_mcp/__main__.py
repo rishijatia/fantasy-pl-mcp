@@ -1139,10 +1139,11 @@ async def compare_players(
             recent_form_comparison = {}
             gameweek_range = []
             
-            # Get gameweek data for each player
+            # Get gameweek data for all players in one batched call
+            all_ids = [player["id"] for player in players_data.values()]
+            player_history = await fixtures.get_player_gameweek_history(all_ids, num_gameweeks)
+
             for name, player in players_data.items():
-                player_history = await fixtures.get_player_gameweek_history([player["id"]], num_gameweeks)
-                
                 if "players" in player_history and player["id"] in player_history["players"]:
                     history = player_history["players"][player["id"]]
                     gameweek_comparison[name] = history

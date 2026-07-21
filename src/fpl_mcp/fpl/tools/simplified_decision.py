@@ -16,7 +16,7 @@ async def get_simplified_league_decision_analysis(
     get_league_standings_func,
     get_teams_historical_data_func,
     league_data: Optional[Dict[str, Any]] = None,
-    limit: int = 5
+    limit: int = 10
 ) -> Dict[str, Any]:
     """
     Get simplified decision analysis for a league (optimized for performance)
@@ -48,8 +48,8 @@ async def get_simplified_league_decision_analysis(
             logger.error(f"Error getting league standings: {e}")
             return {"error": f"Failed to get league standings: {str(e)}"}
     
-    # Extract team IDs (limited to first 5 to avoid timeouts)
-    top_teams = league_data["standings"][:min(5, limit)]
+    # Extract team IDs (history fetches are parallelized, so honor the limit)
+    top_teams = league_data["standings"][:limit]
     team_ids = [team["team_id"] for team in top_teams]
     logger.info(f"Analyzing {len(team_ids)} teams for decision analysis")
     
