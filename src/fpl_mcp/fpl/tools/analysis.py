@@ -10,6 +10,14 @@ from ..utils.position_utils import normalize_position
 
 logger = logging.getLogger(__name__)
 
+# Formatted player objects (fpl/resources/players.py) rename some
+# bootstrap-static fields; accept the bootstrap names as aliases so callers
+# familiar with the raw API can still use them.
+_METRIC_ALIASES = {
+    "total_points": "points",
+    "goals_scored": "goals",
+}
+
 
 def register_tools(mcp):
     """Register player analysis and comparison tools with the MCP server"""
@@ -26,7 +34,7 @@ def register_tools(mcp):
         form_threshold: Optional[float] = None,
         include_gameweeks: bool = False,
         num_gameweeks: int = 5,
-        sort_by: str = "total_points",
+        sort_by: str = "points",
         sort_order: str = "desc",
         limit: int = 20
     ) -> Dict[str, Any]:
@@ -43,7 +51,8 @@ def register_tools(mcp):
             form_threshold: Minimum form rating
             include_gameweeks: Whether to include gameweek-by-gameweek data
             num_gameweeks: Number of recent gameweeks to include
-            sort_by: Metric to sort results by (default: total_points)
+            sort_by: Metric to sort results by (default: points; bootstrap
+                names like total_points/goals_scored are accepted as aliases)
             sort_order: Sort direction ("asc" or "desc")
             limit: Maximum number of players to return
 
@@ -62,7 +71,8 @@ def register_tools(mcp):
         form_threshold = unwrap(form_threshold, "form_threshold", default=None)
         include_gameweeks = unwrap(include_gameweeks, "include_gameweeks", default=False)
         num_gameweeks = unwrap(num_gameweeks, "num_gameweeks", default=5)
-        sort_by = unwrap(sort_by, "sort_by", default="total_points")
+        sort_by = unwrap(sort_by, "sort_by", default="points")
+        sort_by = _METRIC_ALIASES.get(sort_by, sort_by)
         sort_order = unwrap(sort_order, "sort_order", default="desc")
         limit = unwrap(limit, "limit", default=20)
 
@@ -275,7 +285,7 @@ def register_tools(mcp):
     @mcp.tool()
     async def compare_players(
         player_names: List[str],
-        metrics: List[str] = ["total_points", "form", "goals_scored", "assists", "bonus"],
+        metrics: List[str] = ["points", "form", "goals", "assists", "bonus"],
         include_gameweeks: bool = False,
         num_gameweeks: int = 5,
         include_fixture_analysis: bool = True
@@ -284,7 +294,8 @@ def register_tools(mcp):
 
         Args:
             player_names: List of player names to compare (2-5 players recommended)
-            metrics: List of metrics to compare
+            metrics: List of metrics to compare (bootstrap names like
+                total_points/goals_scored are accepted as aliases)
             include_gameweeks: Whether to include gameweek-by-gameweek comparison
             num_gameweeks: Number of recent gameweeks to include in comparison
             include_fixture_analysis: Whether to include fixture analysis including blanks and doubles
@@ -301,8 +312,9 @@ def register_tools(mcp):
 
         metrics = unwrap(
             metrics, "metrics",
-            default=["total_points", "form", "goals_scored", "assists", "bonus"],
+            default=["points", "form", "goals", "assists", "bonus"],
         )
+        metrics = [_METRIC_ALIASES.get(m, m) for m in metrics]
         include_gameweeks = unwrap(include_gameweeks, "include_gameweeks", default=False)
         num_gameweeks = unwrap(num_gameweeks, "num_gameweeks", default=5)
         include_fixture_analysis = unwrap(
