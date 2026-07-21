@@ -16,6 +16,17 @@ import base64
 logger = logging.getLogger(__name__)
 
 
+def extract_refresh_token(pasted: str) -> str:
+    """Accept either a bare refresh token or a full oidc.user JSON blob."""
+    pasted = pasted.strip()
+    if pasted.startswith("{"):
+        try:
+            return json.loads(pasted).get("refresh_token", "") or ""
+        except json.JSONDecodeError:
+            return ""
+    return pasted
+
+
 class CredentialManager:
     """Manages encrypted credential storage for FPL authentication"""
 

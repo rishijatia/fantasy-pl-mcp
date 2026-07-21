@@ -1,11 +1,12 @@
 # src/fpl_mcp/cli.py
 import os
 import sys
-import json
 import argparse
 import getpass
 import asyncio
 from pathlib import Path
+
+from .fpl.credential_manager import extract_refresh_token
 
 
 def _read_long_secret(prompt):
@@ -62,16 +63,6 @@ def _read_long_secret(prompt):
     return buf.decode("utf-8", "replace").strip()
 
 
-def _extract_refresh_token(pasted):
-    """Accept either a bare refresh token or a full oidc.user JSON blob."""
-    if pasted.startswith("{"):
-        try:
-            return json.loads(pasted).get("refresh_token", "") or ""
-        except json.JSONDecodeError:
-            return ""
-    return pasted
-
-
 def setup_credentials():
     """Interactive CLI for setting up FPL credentials with encryption"""
     print("FPL MCP Server - Credential Setup")
@@ -93,7 +84,7 @@ def setup_credentials():
     # Get credentials. The pasted value can exceed the terminal's canonical-mode
     # line limit, so read it in non-canonical mode to avoid a frozen paste.
     pasted = _read_long_secret("Paste the oidc.user JSON (or just the refresh token): ")
-    refresh_token = _extract_refresh_token(pasted)
+    refresh_token = extract_refresh_token(pasted)
     if not refresh_token:
         print(
             "Error: could not find a refresh token in the pasted value. "

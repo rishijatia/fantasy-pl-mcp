@@ -149,9 +149,11 @@ class FPLAuthManager:
                     detail = response.text[:200]
                 if response.status_code in (400, 401):
                     raise ValueError(
-                        "FPL refresh token is invalid or expired. "
-                        "Re-run 'fpl-mcp-config setup' with a fresh refresh token. "
-                        f"({detail})"
+                        "FPL refresh token is invalid or expired. Provide a "
+                        "fresh one via the update_fpl_credentials tool (copy "
+                        "the 'oidc.user' value from Local storage on "
+                        "fantasy.premierleague.com) or re-run "
+                        f"'fpl-mcp-config setup'. ({detail})"
                     )
                 raise ValueError(f"Failed to authenticate with FPL: {detail}")
 

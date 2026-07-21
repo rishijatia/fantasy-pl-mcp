@@ -18,9 +18,8 @@ import pytest
 # Add the src directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from fpl_mcp.cli import _extract_refresh_token
 from fpl_mcp.fpl.auth_manager import FPLAuthManager
-from fpl_mcp.fpl.credential_manager import CredentialManager
+from fpl_mcp.fpl.credential_manager import CredentialManager, extract_refresh_token
 
 TEAM_ID = "12345"
 
@@ -60,17 +59,17 @@ def make_manager(session):
 
 class TestExtractRefreshToken:
     def test_bare_token_passes_through(self):
-        assert _extract_refresh_token("abc.def.ghi") == "abc.def.ghi"
+        assert extract_refresh_token("abc.def.ghi") == "abc.def.ghi"
 
     def test_oidc_user_json_extracts_field(self):
         blob = json.dumps({"access_token": "at", "refresh_token": "rt", "scope": "openid"})
-        assert _extract_refresh_token(blob) == "rt"
+        assert extract_refresh_token(blob) == "rt"
 
     def test_invalid_json_returns_empty(self):
-        assert _extract_refresh_token("{not json") == ""
+        assert extract_refresh_token("{not json") == ""
 
     def test_json_without_refresh_token_returns_empty(self):
-        assert _extract_refresh_token(json.dumps({"access_token": "at"})) == ""
+        assert extract_refresh_token(json.dumps({"access_token": "at"})) == ""
 
 
 class TestCredentialManager:
@@ -177,6 +176,30 @@ class TestAuthenticate:
         # The in-memory session stays valid even though persistence failed.
         assert manager._access_token == "at-new"
         assert manager._refresh_token == "rt-new"
+
+
+class TestSetCredentials:
+    def test_stores_and_forces_reauth(self, isolated_home):
+        CredentialManager().store_credentials("rt-old", TEAM_ID)
+        session = MagicMock()
+        manager = make_manager(session)
+        manager._access_token = "at-stale"
+        manager._access_token_expiry = datetime.now() + timedelta(hours=1)
+
+        manager.set_credentials("rt-fresh", "99999")
+
+        assert manager._access_token is None
+        assert not manager.is_authenticated
+        assert manager.team_id == "99999"
+        assert CredentialManager().load_credentials() == ("rt-fresh", "99999")
+
+        # Next authenticated call must use the new token.
+        session = MagicMock()
+        session.post.return_value = token_response()
+        manager._session = session
+        asyncio.run(manager._authenticate())
+        sent = session.post.call_args.kwargs["data"]
+        assert sent["refresh_token"] == "rt-fresh"
 
 
 class TestAuthedRequests:
