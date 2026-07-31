@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 from .cache import cache
 from .rate_limiter import rate_limiter
 from .credential_manager import CredentialManager
+from .utils.gameweek import get_current_gameweek_id
 from ..config import (
     FPL_API_BASE_URL,
     FPL_USER_AGENT,
@@ -238,12 +239,18 @@ class FPLAuthManager:
             raise ValueError("Team ID must be provided")
             
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/event/{gameweek}/picks/"
-        # Historical picks don't change once the gameweek is over, so cache
-        # for a long time (30 days)
+        # Picks for finished gameweeks are immutable, so cache them for a
+        # long time; the current (or a future) gameweek can still change,
+        # so keep its TTL short.
+        current_gw = await get_current_gameweek_id()
+        if current_gw is not None and gameweek < current_gw:
+            ttl = 30 * 24 * 3600  # 30 days
+        else:
+            ttl = 300  # 5 minutes
         return await cache.get_or_fetch(
             f"team_gw_{team_id}_{gameweek}",
             fetch_func=lambda: self.make_authed_request(url),
-            ttl=30 * 24 * 3600,
+            ttl=ttl,
         )
     
     async def get_entry_data(self, team_id: Optional[int] = None) -> Dict[str, Any]:

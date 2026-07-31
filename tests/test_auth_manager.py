@@ -80,3 +80,33 @@ async def test_missing_credentials_raise():
 
     with pytest.raises(ValueError, match="refresh token"):
         await manager._authenticate()
+
+
+async def _picks_ttl(current_gw, requested_gw):
+    """Call get_team_for_gameweek and capture the ttl passed to the cache."""
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    fetch = AsyncMock(return_value={"picks": []})
+    with patch(
+        "fpl_mcp.fpl.auth_manager.get_current_gameweek_id",
+        new_callable=AsyncMock,
+        return_value=current_gw,
+    ), patch.object(type(manager), "make_authed_request", new=AsyncMock()), patch(
+        "fpl_mcp.fpl.auth_manager.cache.get_or_fetch", new=fetch
+    ):
+        await manager.get_team_for_gameweek(gameweek=requested_gw)
+
+    return fetch.call_args.kwargs["ttl"]
+
+
+async def test_past_gameweek_picks_cached_long():
+    assert await _picks_ttl(current_gw=10, requested_gw=7) == 30 * 24 * 3600
+
+
+async def test_current_gameweek_picks_cached_briefly():
+    assert await _picks_ttl(current_gw=10, requested_gw=10) == 300
+
+
+async def test_unknown_current_gameweek_uses_short_ttl():
+    assert await _picks_ttl(current_gw=None, requested_gw=7) == 300

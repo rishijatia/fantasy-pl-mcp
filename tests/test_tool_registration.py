@@ -28,6 +28,15 @@ EXPECTED_TOOLS = {
     # analysis.py
     "analyze_players",
     "compare_players",
+    # live.py
+    "get_gameweek_live_scores",
+    "get_dream_team",
+    # advice.py
+    "suggest_captain",
+    # new additions to team.py / managers.py / players.py
+    "get_my_current_team",
+    "get_manager_transfer_history",
+    "get_price_changes",
 }
 
 EXPECTED_PROMPTS = {
