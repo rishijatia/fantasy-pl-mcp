@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fpl-mcp"
-version = "0.1.6"
+version = "0.1.7"
 description = "An MCP server for Fantasy Premier League data"
 readme = "README.md"
 authors = [
@@ -38,6 +38,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "respx>=0.21.0",
     "black>=23.0.0",
     "flake8>=6.0.0",
     "isort>=5.10.0",
@@ -54,6 +56,10 @@ fpl-mcp-config = "fpl_mcp.cli:main"
 [project.urls]
 Homepage = "https://github.com/rishijatia/fantasy-pl-mcp"
 Issues = "https://github.com/rishijatia/fantasy-pl-mcp/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

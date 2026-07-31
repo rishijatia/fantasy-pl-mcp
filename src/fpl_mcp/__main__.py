@@ -192,6 +192,70 @@ async def check_fpl_authentication() -> Dict[str, Any]:
             "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
         }
 
+@mcp.tool()
+async def update_fpl_credentials(refresh_token: str, team_id: str = "") -> Dict[str, Any]:
+    """Store a new FPL refresh token when the current one has expired.
+
+    Use this when authenticated FPL tools fail with an invalid/expired refresh
+    token error. Ask the user to fetch a fresh token first: log in at
+    https://fantasy.premierleague.com, open the DevTools Console (F12), run
+
+        copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('oidc.user:')))).refresh_token)
+
+    (typing 'allow pasting' first if Chrome refuses), and paste the clipboard
+    contents here. Copying the whole 'oidc.user:...' JSON value from DevTools ->
+    Application -> Local storage works too.
+
+    Args:
+        refresh_token: The copied oidc.user JSON value (or just its
+            refresh_token field)
+        team_id: FPL team ID; omit to keep the currently stored one
+
+    Returns:
+        Whether the new token was stored and validated against the FPL API
+    """
+    from .fpl.auth_manager import get_auth_manager
+    from .fpl.credential_manager import extract_refresh_token
+
+    token = extract_refresh_token(refresh_token)
+    if not token:
+        return {
+            "updated": False,
+            "error": "No refresh token found in the provided value. Pass the "
+                     "full oidc.user JSON or its refresh_token field."
+        }
+
+    auth_manager = get_auth_manager()
+    team_id = team_id.strip() or auth_manager.team_id
+    if not team_id:
+        return {
+            "updated": False,
+            "error": "No team ID stored. Ask the user for their FPL team ID "
+                     "(the number in their team page URL) and pass it as team_id."
+        }
+
+    auth_manager.set_credentials(token, str(team_id))
+
+    # Validate immediately: the exchange claims the token before the user's
+    # browser can rotate it away, and /my-team/ proves the API accepts it.
+    try:
+        team_data = await auth_manager.get_my_team()
+    except Exception as e:
+        return {
+            "updated": False,
+            "error": f"Token was stored but failed validation: {e}. Ask the "
+                     "user to copy a fresh oidc.user value and try again."
+        }
+
+    return {
+        "updated": True,
+        "team_id": team_id,
+        "squad_picks": len(team_data.get("picks", [])),
+        "note": "Token validated and stored. The copy in the user's browser "
+                "has been superseded; their browser session will recover on "
+                "its own."
+    }
+
 # Register tools
 @mcp.tool()
 async def get_gameweek_status() -> Dict[str, Any]:

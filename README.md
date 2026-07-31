@@ -207,7 +207,13 @@ To add new features:
 
 ## Authentication
 
-To use features requiring authentication (like accessing your team or private leagues), you need to set up your FPL credentials:
+FPL migrated its login to PingOne (Ping Identity) OIDC, so authentication now uses an OIDC
+**refresh token** rather than your email and password. The refresh token is exchanged for
+short-lived access tokens automatically, and requests are sent with an
+`X-API-Authorization: Bearer` header.
+
+To use features requiring authentication (like accessing your team or private leagues), set up
+your refresh token:
 
 ```bash
 # Run the credential setup tool
@@ -215,9 +221,26 @@ fpl-mcp-config setup
 ```
 
 This interactive tool will:
-1. Prompt for your FPL email, password, and team ID
-2. Let you choose between storing in config.json or .env file
-3. Save credentials securely to ~/.fpl-mcp/
+1. Show you how to copy your OIDC refresh token from the browser
+2. Prompt for the refresh token and your team ID
+3. Save them (encrypted) to `~/.fpl-mcp/credentials.enc`
+
+**Getting your refresh token:**
+1. Log in at https://fantasy.premierleague.com in your browser.
+2. Open the DevTools Console (F12 → Console) and run:
+   ```js
+   copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('oidc.user:')))).refresh_token)
+   ```
+   (If Chrome refuses, type `allow pasting` in the console first.) The refresh
+   token is now on your clipboard — paste it when prompted.
+3. Alternatively: DevTools → Application → Local storage →
+   `https://fantasy.premierleague.com`, copy the whole JSON value of the key
+   starting with `oidc.user:` and paste that instead — setup extracts the
+   `refresh_token` field automatically.
+
+Run `fpl-mcp-config test` right after setup: the first exchange claims the token
+before your browser session can supersede it, and rotates it so the copy in your
+browser is retired — that is expected, and your browser session recovers on its own.
 
 You can test your authentication with:
 ```bash
@@ -227,26 +250,37 @@ fpl-mcp-config test
 Alternatively, you can manually configure authentication:
 1. Create `~/.fpl-mcp/.env` file with:
    ```
-   FPL_EMAIL=your_email@example.com
-   FPL_PASSWORD=your_password
+   FPL_REFRESH_TOKEN=your_refresh_token
    FPL_TEAM_ID=your_team_id
    ```
-   
+
 2. Or create `~/.fpl-mcp/config.json`:
    ```json
    {
-     "email": "your_email@example.com",
-     "password": "your_password",
+     "refresh_token": "your_refresh_token",
      "team_id": "your_team_id"
    }
    ```
 
 3. Or set environment variables:
    ```bash
-   export FPL_EMAIL=your_email@example.com
-   export FPL_PASSWORD=your_password
+   export FPL_REFRESH_TOKEN=your_refresh_token
    export FPL_TEAM_ID=your_team_id
    ```
+
+> Note: refresh tokens can be rotated or revoked by FPL. If authentication starts failing,
+> re-run `fpl-mcp-config setup` with a freshly copied token.
+
+### Advanced: overriding the OIDC endpoints
+
+If FPL changes its OIDC client or endpoints, you can override the defaults with environment
+variables (all optional):
+
+| Variable | Default |
+| --- | --- |
+| `FPL_OIDC_CLIENT_ID` | `1f243d70-a140-4035-8c41-341f5af5aa12` |
+| `FPL_OIDC_AUTHORITY` | `https://account.premierleague.com/as` |
+| `FPL_TOKEN_URL` | `<FPL_OIDC_AUTHORITY>/token` |
 
 ## Limitations
 

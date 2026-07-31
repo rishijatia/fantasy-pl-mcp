@@ -15,20 +15,23 @@ async def get_simplified_league_decision_analysis(
     end_gw: int,
     get_league_standings_func,
     get_teams_historical_data_func,
-    league_data: Optional[Dict[str, Any]] = None
+    league_data: Optional[Dict[str, Any]] = None,
+    limit: int = 5
 ) -> Dict[str, Any]:
     """
     Get simplified decision analysis for a league (optimized for performance)
-    
+
     Args:
         league_id: ID of the league to analyze
         start_gw: Starting gameweek
         end_gw: Ending gameweek
-        limit: Maximum number of teams to include
+        limit: Maximum number of teams to include, capped at 5 because the
+            per-team history fetches below run sequentially and larger
+            leagues would time out
         get_league_standings_func: Function to get league standings
         get_teams_historical_data_func: Function to get historical data
         league_data: Optional pre-fetched league data
-        
+
     Returns:
         Basic decision analysis data structured for visualization
     """
