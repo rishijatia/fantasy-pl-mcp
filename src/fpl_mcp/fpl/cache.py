@@ -32,39 +32,45 @@ class FPLCache:
         self.cache = Cache(str(cache_dir))
         self.default_ttl = default_ttl
         self._locks: Dict[str, asyncio.Lock] = {}
-    
-    def _get_lock(self, key: str) -> asyncio.Lock:
+        self._locks_guard = asyncio.Lock()
+
+    async def _get_lock(self, key: str) -> asyncio.Lock:
         """Get a lock for a specific cache key to prevent concurrent fetches."""
-        if key not in self._locks:
-            self._locks[key] = asyncio.Lock()
-        return self._locks[key]
-    
-    async def get_or_fetch(self, key: str, fetch_func: Callable[[], Any], ttl: Optional[int] = None) -> Any:
+        async with self._locks_guard:
+            if key not in self._locks:
+                self._locks[key] = asyncio.Lock()
+            return self._locks[key]
+
+    async def get_or_fetch(self, key: str, fetch_func: Callable[[], Any], ttl: Optional[float] = None) -> Any:
         """
         Get from cache or fetch and cache the data.
         Uses locks to prevent concurrent fetches for the same key.
-        
+
+        Entries use diskcache's native expiry. Keys are namespaced ("v2:")
+        so stale (timestamp, data) tuples written by older versions are
+        never misread.
+
         Args:
             key: Cache key
             fetch_func: Async function to call if cache miss
             ttl: Optional TTL override
-            
+
         Returns:
             Cached or freshly fetched data
         """
+        namespaced_key = f"v2:{key}"
+
         # Use lock to prevent multiple concurrent fetches for same key
-        async with self._get_lock(key):
-            current_time = time.time()
-            
-            # Check if key exists and is not expired
-            if key in self.cache:
-                cached_time, cached_data = self.cache[key]
-                if current_time - cached_time < (ttl or self.default_ttl):
-                    return cached_data
-            
+        lock = await self._get_lock(namespaced_key)
+        async with lock:
+            sentinel = object()
+            cached_data = self.cache.get(namespaced_key, default=sentinel)
+            if cached_data is not sentinel:
+                return cached_data
+
             # Cache miss or expired, fetch new data
             data = await fetch_func()
-            self.cache[key] = (current_time, data)
+            self.cache.set(namespaced_key, data, expire=ttl or self.default_ttl)
             return data
     
     def clear(self, key: Optional[str] = None) -> None:
@@ -76,8 +82,10 @@ class FPLCache:
         """
         if key is None:
             self.cache.clear()
-        elif key in self.cache:
-            del self.cache[key]
+        else:
+            for candidate in (f"v2:{key}", key):
+                if candidate in self.cache:
+                    del self.cache[candidate]
             
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
@@ -92,7 +100,7 @@ class FPLCache:
 cache = FPLCache()
 
 
-def cached(key_prefix: str, ttl: Optional[int] = None):
+def cached(key_prefix: str, ttl: Optional[float] = None):
     """
     Decorator for caching async function results.
     
@@ -141,6 +149,28 @@ async def get_cached_player_data():
         fetch_func=fetch_and_prepare_all_players,
         ttl=3600  # Refresh hourly
     )
+
+async def get_player_map():
+    """Get a cached mapping of player ID -> raw bootstrap player element.
+
+    Avoids repeated O(n) scans over the full player list when looking
+    players up by ID. Values have the raw bootstrap-static shape (e.g.
+    "team" is a team ID), matching api.get_players().
+
+    Returns:
+        Dict mapping player ID to the raw player dict
+    """
+    async def build_map():
+        from .api import api
+        players = await api.get_players()
+        return {p["id"]: p for p in players}
+
+    return await cache.get_or_fetch(
+        "player_id_map",
+        fetch_func=build_map,
+        ttl=3600  # Refresh hourly, same cadence as bootstrap-static
+    )
+
 
 async def fetch_and_prepare_all_players():
     """Fetch all players and add computed fields.

@@ -4,6 +4,8 @@ import logging
 from typing import List, Dict, Any, Optional, Union
 
 from ..api import api
+from ..cache import get_player_map
+from ..utils.concurrency import gather_limited
 
 # Set up logging following project conventions
 logger = logging.getLogger("fpl-mcp-server.fixtures")
@@ -104,15 +106,11 @@ async def get_player_fixtures(player_id: int, num_fixtures: int = 5) -> List[Dic
         List of upcoming fixtures for the player
     """
     logger.info(f"Getting player fixtures (player_id={player_id}, num_fixtures={num_fixtures})")
-    
+
     # Get player data to find their team
-    players_data = await api.get_players()
-    player = None
-    for p in players_data:
-        if p.get("id") == player_id:
-            player = p
-            break
-    
+    player_map = await get_player_map()
+    player = player_map.get(player_id)
+
     if not player:
         logger.warning(f"Player with ID {player_id} not found")
         return []
@@ -207,15 +205,11 @@ async def analyze_player_fixtures(player_id: int, num_fixtures: int = 5) -> Dict
         Analysis of player's upcoming fixtures with difficulty ratings
     """
     logger.info(f"Analyzing player fixtures (player_id={player_id}, num_fixtures={num_fixtures})")
-    
+
     # Get player data
-    players_data = await api.get_players()
-    player = None
-    for p in players_data:
-        if p.get("id") == player_id:
-            player = p
-            break
-    
+    player_map = await get_player_map()
+    player = player_map.get(player_id)
+
     if not player:
         logger.warning(f"Player with ID {player_id} not found")
         return {"error": f"Player with ID {player_id} not found"}
@@ -507,21 +501,32 @@ async def get_player_gameweek_history(player_ids: List[int], num_gameweeks: int 
     gameweek_range = list(range(start_gameweek, current_gameweek + 1))
     logger.info(f"Analyzing gameweek range: {gameweek_range}")
     
-    # Fetch history for each player
+    # Build a team-name map once instead of one lookup call per history entry
+    teams_data = await api.get_teams()
+    team_names = {t.get("id"): t.get("name", "Unknown team") for t in teams_data}
+
+    # Fetch all player summaries concurrently (bounded)
+    summaries = await gather_limited(
+        (api.get_player_summary(player_id) for player_id in player_ids),
+        limit=5,
+        return_exceptions=True,
+    )
+
     result = {}
-    
-    for player_id in player_ids:
+
+    for player_id, player_summary in zip(player_ids, summaries):
+        if isinstance(player_summary, Exception):
+            logger.error(f"Error fetching history for player {player_id}: {player_summary}")
+            continue
+
         try:
-            # Get player summary which includes history
-            player_summary = await api.get_player_summary(player_id)
-            
             if not player_summary or "history" not in player_summary:
                 logger.warning(f"No history data found for player {player_id}")
                 continue
-                
+
             # Filter to requested gameweeks and format
             player_history = []
-            
+
             for entry in player_summary["history"]:
                 round_num = entry.get("round")
                 if round_num in gameweek_range:
@@ -533,7 +538,7 @@ async def get_player_gameweek_history(player_ids: List[int], num_gameweeks: int 
                         "assists": entry.get("assists", 0),
                         "clean_sheets": entry.get("clean_sheets", 0),
                         "bonus": entry.get("bonus", 0),
-                        "opponent": await get_team_name_by_id(entry.get("opponent_team")),
+                        "opponent": team_names.get(entry.get("opponent_team"), "Unknown team"),
                         "was_home": entry.get("was_home", False),
                         # Added additional stats as requested
                         "expected_goals": entry.get("expected_goals", 0),

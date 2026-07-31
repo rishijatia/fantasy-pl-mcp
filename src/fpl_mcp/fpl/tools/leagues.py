@@ -7,6 +7,7 @@ from typing import Dict, Any, List, Optional
 from ..auth_manager import get_auth_manager
 from ..api import api
 from ..cache import cache, cached
+from ..utils.concurrency import gather_limited
 from ...config import FPL_API_BASE_URL, LEAGUE_RESULTS_LIMIT
 from .simplified_decision import get_simplified_league_decision_analysis
 
@@ -156,24 +157,26 @@ async def get_teams_historical_data(team_ids: List[int], start_gw: Optional[int]
             "suggestion": "Use numeric values or 'current'/'current-N' format"
         }
     
-    # Get history data for each team
-    for team_id in team_ids:
+    # Fetch history for all teams concurrently (bounded), with 1 hour TTL caching
+    async def fetch_team_history(team_id):
+        url = f"{FPL_API_BASE_URL}/entry/{team_id}/history/"
+        return await cache.get_or_fetch(
+            f"team_history_{team_id}",
+            fetch_func=lambda: auth_manager.make_authed_request(url),
+            ttl=3600,
+        )
+
+    history_results = await gather_limited(
+        (fetch_team_history(team_id) for team_id in team_ids),
+        limit=5,
+        return_exceptions=True,
+    )
+
+    for team_id, history_data in zip(team_ids, history_results):
         try:
-            # Try to get from cache first (1 hour TTL)
-            cache_key = f"team_history_{team_id}"
-            cached_data = cache.cache.get(cache_key)
-            
-            current_time = time.time()
-            if cached_data and cached_data[0] + 3600 > current_time:
-                history_data = cached_data[1]
-            else:
-                # Fetch fresh data if not cached
-                url = f"{FPL_API_BASE_URL}/entry/{team_id}/history/"
-                history_data = await auth_manager.make_authed_request(url)
-                
-                # Cache the data
-                cache.cache[cache_key] = (current_time, history_data)
-            
+            if isinstance(history_data, Exception):
+                raise history_data
+
             # Filter to requested gameweek range
             if "current" in history_data:
                 current = [gw for gw in history_data["current"] if start_gw <= gw.get("event", 0) <= end_gw]
@@ -432,31 +435,21 @@ async def _get_league_team_composition(
     errors = {}
     
     auth_manager = get_auth_manager()
-    for team_id in team_ids:
-        try:
-            # Try to get from cache first
-            cache_key = f"team_picks_{team_id}_{gameweek}"
-            cached_data = cache.cache.get(cache_key)
-            
-            current_time = time.time()
-            if cached_data and cached_data[0] + 3600 > current_time:
-                picks_data = cached_data[1]
-            else:
-                # Fetch team data for the gameweek
-                try:
-                    picks_data = await auth_manager.get_team_for_gameweek(team_id, gameweek)
-                    
-                    # Cache the data (1 hour TTL)
-                    cache.cache[cache_key] = (current_time, picks_data)
-                except Exception as e:
-                    logger.error(f"Error fetching team {team_id} for gameweek {gameweek}: {e}")
-                    errors[team_id] = str(e)
-                    continue
-            
-            teams_data[team_id] = picks_data
-        except Exception as e:
-            logger.error(f"Error processing team {team_id}: {e}")
-            errors[team_id] = str(e)
+
+    # Fetch all teams' picks concurrently (bounded); get_team_for_gameweek
+    # already caches per team/gameweek
+    picks_results = await gather_limited(
+        (auth_manager.get_team_for_gameweek(team_id, gameweek) for team_id in team_ids),
+        limit=5,
+        return_exceptions=True,
+    )
+
+    for team_id, picks_data in zip(team_ids, picks_results):
+        if isinstance(picks_data, Exception):
+            logger.error(f"Error fetching team {team_id} for gameweek {gameweek}: {picks_data}")
+            errors[team_id] = str(picks_data)
+            continue
+        teams_data[team_id] = picks_data
     
     # Process team compositions
     if not teams_data:
@@ -714,8 +707,9 @@ async def _get_league_fixture_analysis(
     # Get all FPL teams to map to manager teams
     fpl_team_ids = set(t["id"] for t in teams_data)
     
-    # Get all players to find team squads
+    # Get all players to find team squads; index by ID for O(1) lookups
     all_players = await api.get_players()
+    player_team_map = {p.get("id"): p.get("team") for p in all_players}
     
     # Get the list of gameweeks in this range
     gameweeks = list(range(start_gw, end_gw + 1))
@@ -724,35 +718,39 @@ async def _get_league_fixture_analysis(
     team_fixture_analysis = []
     
     auth_manager = get_auth_manager()
-    
-    # Cache for API calls to avoid repetition
-    team_picks_cache = {}
-    
+
     # Process only the top N teams based on the configured limit
     # This uses the rank from the standings to get only the top teams by rank
     top_teams = league_data["standings"][:LEAGUE_RESULTS_LIMIT]
     logger.info(f"Analyzing fixtures for top {len(top_teams)} teams in the league")
-    
+
+    # Prefetch picks for all teams concurrently (bounded)
+    picks_results = await gather_limited(
+        (
+            auth_manager.get_team_for_gameweek(t["team_id"], start_gw)
+            for t in top_teams
+        ),
+        limit=5,
+        return_exceptions=True,
+    )
+    picks_by_team = {}
+    for fantasy_team, picks in zip(top_teams, picks_results):
+        if isinstance(picks, Exception):
+            logger.error(
+                f"Error fetching team {fantasy_team['team_id']} for gameweek {start_gw}: {picks}"
+            )
+            continue
+        picks_by_team[fantasy_team["team_id"]] = picks
+
     # Process each fantasy team
     for rank, fantasy_team in enumerate(top_teams):
         team_id = fantasy_team["team_id"]
-        
+
         try:
-            # Get team picks for the first gameweek to analyze team composition
-            cache_key = f"team_picks_{team_id}_{start_gw}"
-            picks_data = None
-            
-            if cache_key in team_picks_cache:
-                picks_data = team_picks_cache[cache_key]
-            else:
-                # Fetch team data for the gameweek 
-                try:
-                    picks_data = await auth_manager.get_team_for_gameweek(team_id, start_gw)
-                    team_picks_cache[cache_key] = picks_data
-                except Exception as e:
-                    logger.error(f"Error fetching team {team_id} for gameweek {start_gw}: {e}")
-                    continue
-            
+            picks_data = picks_by_team.get(team_id)
+            if picks_data is None:
+                continue
+
             if not picks_data or "picks" not in picks_data:
                 logger.warning(f"No picks data found for team {team_id}")
                 continue
@@ -761,12 +759,11 @@ async def _get_league_fixture_analysis(
             player_ids = [pick.get("element") for pick in picks_data.get("picks", [])]
             
             # Map these player IDs to their FPL teams
-            player_teams = {}
-            for player_id in player_ids:
-                for player in all_players:
-                    if player.get("id") == player_id:
-                        player_teams[player_id] = player.get("team")
-                        break
+            player_teams = {
+                player_id: player_team_map[player_id]
+                for player_id in player_ids
+                if player_id in player_team_map
+            }
             
             # Count how many players from each FPL team
             fpl_team_counts = {}

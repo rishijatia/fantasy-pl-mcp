@@ -223,20 +223,13 @@ class FPLAuthManager:
         if not team_id:
             raise ValueError("Team ID must be provided")
             
-        cache_key = f"my_team_{team_id}"
-        cached_data = cache.cache.get(cache_key)
-        
-        if cached_data and cached_data[0] + 60 > datetime.now().timestamp():
-            # Use cached data if it's less than 60 seconds old
-            return cached_data[1]
-            
         url = f"{FPL_API_BASE_URL}/my-team/{team_id}/"
-        data = await self.make_authed_request(url)
-        
         # Cache data for 60 seconds
-        cache.cache[cache_key] = (datetime.now().timestamp(), data)
-        
-        return data
+        return await cache.get_or_fetch(
+            f"my_team_{team_id}",
+            fetch_func=lambda: self.make_authed_request(url),
+            ttl=60,
+        )
     
     async def get_team_for_gameweek(self, team_id: Optional[int] = None, gameweek: int = 1) -> Dict[str, Any]:
         """Get team picks for a specific gameweek"""
@@ -244,20 +237,14 @@ class FPLAuthManager:
         if not team_id:
             raise ValueError("Team ID must be provided")
             
-        cache_key = f"team_gw_{team_id}_{gameweek}"
-        cached_data = cache.cache.get(cache_key)
-        
-        if cached_data:
-            # Use cached data if available (these don't change once set)
-            return cached_data[1]
-            
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/event/{gameweek}/picks/"
-        data = await self.make_authed_request(url)
-        
-        # Cache this data indefinitely as historical data doesn't change
-        cache.cache[cache_key] = (datetime.now().timestamp(), data)
-        
-        return data
+        # Historical picks don't change once the gameweek is over, so cache
+        # for a long time (30 days)
+        return await cache.get_or_fetch(
+            f"team_gw_{team_id}_{gameweek}",
+            fetch_func=lambda: self.make_authed_request(url),
+            ttl=30 * 24 * 3600,
+        )
     
     async def get_entry_data(self, team_id: Optional[int] = None) -> Dict[str, Any]:
         """Get general information about a team entry"""
