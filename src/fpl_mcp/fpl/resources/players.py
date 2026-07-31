@@ -2,6 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 import logging
 from ..api import api
+from .player_nicknames import NICKNAMES
 
 async def get_players_resource(name_filter: Optional[str] = None, team_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     """
@@ -157,25 +158,9 @@ async def find_players_by_name(name: str, limit: int = 5) -> List[Dict[str, Any]
     if not search_term:
         return []
     
-    # Common nickname and abbreviation mapping
-    nicknames = {
-        "kdb": "kevin de bruyne",
-        "vvd": "virgil van dijk",
-        "taa": "trent alexander-arnold",
-        "cr7": "cristiano ronaldo",
-        "bobby": "roberto firmino",
-        "mo salah": "mohamed salah",
-        "mane": "sadio mane",
-        "auba": "aubameyang",
-        "lewa": "lewandowski",
-        "kane": "harry kane",
-        "rashford": "marcus rashford",
-        "son": "heung-min son",
-    }
-    
     # Check for nickname match
-    if search_term in nicknames:
-        search_term = nicknames[search_term]
+    if search_term in NICKNAMES:
+        search_term = NICKNAMES[search_term]
     
     # Split search term into parts for multi-part matching
     search_parts = search_term.split()

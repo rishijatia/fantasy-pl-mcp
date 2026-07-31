@@ -66,3 +66,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+fpl_mcp = ["schemas/*.json"]

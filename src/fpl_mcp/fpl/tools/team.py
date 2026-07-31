@@ -144,26 +144,21 @@ async def get_team_for_gameweek(gameweek: Optional[int] = None, team_id: int = 0
     
     # Try to get team manager information
     try:
-        # Use cache to avoid repeated calls
-        cache_key = f"team_manager_info_{team_id}"
-        cached_data = cache.cache.get(cache_key)
-        
-        if cached_data and cached_data[0] + 3600 > time.time():  # 1 hour cache
-            manager_info = cached_data[1]
-        else:
-            # Get team entry data for manager info
+        async def fetch_manager_info():
             entry_data = await auth_manager.get_entry_data(team_id)
-            
-            manager_info = {
+            return {
                 "team_name": entry_data.get("name", "Unknown"),
                 "manager_name": f"{entry_data.get('player_first_name', '')} {entry_data.get('player_last_name', '')}".strip(),
                 "manager_region": entry_data.get("player_region_name", ""),
                 "overall_rank": entry_data.get("summary_overall_rank", 0),
                 "overall_points": entry_data.get("summary_overall_points", 0),
             }
-            
-            # Cache the result
-            cache.cache[cache_key] = (time.time(), manager_info)
+
+        manager_info = await cache.get_or_fetch(
+            f"team_manager_info_{team_id}",
+            fetch_func=fetch_manager_info,
+            ttl=3600,
+        )
     except Exception as e:
         logger.warning(f"Could not get manager info for team {team_id}: {e}")
         manager_info = {
@@ -208,44 +203,37 @@ async def get_manager_info(team_id: int) -> Dict[str, Any]:
     Returns:
         Manager information including history, name, and team details
     """
-    # Check cache first
-    cache_key = f"manager_info_{team_id}"
-    cached_data = cache.cache.get(cache_key)
-    
-    if cached_data and cached_data[0] + 3600 > time.time():  # 1 hour cache
-        return cached_data[1]
-    
     # Get auth manager
     auth_manager = get_auth_manager()
-    
+
     try:
-        # Fetch team entry data
-        entry_data = await auth_manager.get_entry_data(team_id)
-        
-        # Format the response
-        manager_info = {
-            "team_id": team_id,
-            "team_name": entry_data.get("name", "Unknown"),
-            "manager_name": f"{entry_data.get('player_first_name', '')} {entry_data.get('player_last_name', '')}".strip(),
-            "started_event": entry_data.get("started_event"),
-            "overall_rank": entry_data.get("summary_overall_rank"),
-            "overall_points": entry_data.get("summary_overall_points"),
-            "value": entry_data.get("last_deadline_value") / 10.0 if entry_data.get("last_deadline_value") else 0,
-            "bank": entry_data.get("last_deadline_bank") / 10.0 if entry_data.get("last_deadline_bank") else 0,
-            "kit": entry_data.get("kit"),
-            "region": entry_data.get("player_region_name"),
-            "joined_time": entry_data.get("joined_time"),
-            "leagues": {
-                "classic": entry_data.get("leagues", {}).get("classic", []),
-                "h2h": entry_data.get("leagues", {}).get("h2h", []),
-                "cup": entry_data.get("leagues", {}).get("cup", {})
+        async def fetch_manager_info():
+            entry_data = await auth_manager.get_entry_data(team_id)
+            return {
+                "team_id": team_id,
+                "team_name": entry_data.get("name", "Unknown"),
+                "manager_name": f"{entry_data.get('player_first_name', '')} {entry_data.get('player_last_name', '')}".strip(),
+                "started_event": entry_data.get("started_event"),
+                "overall_rank": entry_data.get("summary_overall_rank"),
+                "overall_points": entry_data.get("summary_overall_points"),
+                "value": entry_data.get("last_deadline_value") / 10.0 if entry_data.get("last_deadline_value") else 0,
+                "bank": entry_data.get("last_deadline_bank") / 10.0 if entry_data.get("last_deadline_bank") else 0,
+                "kit": entry_data.get("kit"),
+                "region": entry_data.get("player_region_name"),
+                "joined_time": entry_data.get("joined_time"),
+                "leagues": {
+                    "classic": entry_data.get("leagues", {}).get("classic", []),
+                    "h2h": entry_data.get("leagues", {}).get("h2h", []),
+                    "cup": entry_data.get("leagues", {}).get("cup", {})
+                }
             }
-        }
-        
-        # Cache the result
-        cache.cache[cache_key] = (time.time(), manager_info)
-        
-        return manager_info
+
+        # 1 hour cache
+        return await cache.get_or_fetch(
+            f"manager_info_{team_id}",
+            fetch_func=fetch_manager_info,
+            ttl=3600,
+        )
     except Exception as e:
         logger.error(f"Error fetching manager info for team {team_id}: {e}")
         return {"error": f"Failed to retrieve manager info: {str(e)}"}
@@ -304,10 +292,10 @@ def register_tools(mcp):
     @mcp.tool()
     async def get_manager(team_id: int) -> Dict[str, Any]:
         """Get detailed information about an FPL manager
-        
+
         Args:
             team_id: FPL team ID to look up
-            
+
         Returns:
             Manager information including history, name, team details, and leagues
         """
@@ -316,3 +304,110 @@ def register_tools(mcp):
         except Exception as e:
             logger.error(f"Error in get_manager: {e}")
             return {"error": str(e)}
+
+    @mcp.tool()
+    async def check_fpl_authentication() -> Dict[str, Any]:
+        """Check if FPL authentication is working correctly
+
+        Returns:
+            Authentication status and basic team information
+        """
+        try:
+            auth_manager = get_auth_manager()
+            team_id = auth_manager.team_id
+
+            if not team_id:
+                return {
+                    "authenticated": False,
+                    "error": "No team ID found in credentials",
+                    "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+                }
+
+            # Try to get basic team info as authentication test
+            try:
+                entry_data = await auth_manager.get_entry_data()
+
+                return {
+                    "authenticated": True,
+                    "team_name": entry_data.get("name"),
+                    "manager_name": f"{entry_data.get('player_first_name')} {entry_data.get('player_last_name')}",
+                    "overall_rank": entry_data.get("summary_overall_rank"),
+                    "team_id": team_id
+                }
+            except Exception as e:
+                return {
+                    "authenticated": False,
+                    "error": f"Authentication failed: {str(e)}",
+                    "setup_instructions": "Check your FPL credentials and ensure they are correct"
+                }
+
+        except Exception as e:
+            logger.error(f"Authentication check failed: {e}")
+            return {
+                "authenticated": False,
+                "error": str(e),
+                "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+            }
+
+    @mcp.tool()
+    async def update_fpl_credentials(refresh_token: str, team_id: str = "") -> Dict[str, Any]:
+        """Store a new FPL refresh token when the current one has expired.
+
+        Use this when authenticated FPL tools fail with an invalid/expired refresh
+        token error. Ask the user to fetch a fresh token first: log in at
+        https://fantasy.premierleague.com, open the DevTools Console (F12), run
+
+            copy(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('oidc.user:')))).refresh_token)
+
+        (typing 'allow pasting' first if Chrome refuses), and paste the clipboard
+        contents here. Copying the whole 'oidc.user:...' JSON value from DevTools ->
+        Application -> Local storage works too.
+
+        Args:
+            refresh_token: The copied oidc.user JSON value (or just its
+                refresh_token field)
+            team_id: FPL team ID; omit to keep the currently stored one
+
+        Returns:
+            Whether the new token was stored and validated against the FPL API
+        """
+        from ..credential_manager import extract_refresh_token
+
+        token = extract_refresh_token(refresh_token)
+        if not token:
+            return {
+                "updated": False,
+                "error": "No refresh token found in the provided value. Pass the "
+                         "full oidc.user JSON or its refresh_token field."
+            }
+
+        auth_manager = get_auth_manager()
+        team_id = team_id.strip() or auth_manager.team_id
+        if not team_id:
+            return {
+                "updated": False,
+                "error": "No team ID stored. Ask the user for their FPL team ID "
+                         "(the number in their team page URL) and pass it as team_id."
+            }
+
+        auth_manager.set_credentials(token, str(team_id))
+
+        # Validate immediately: the exchange claims the token before the user's
+        # browser can rotate it away, and /my-team/ proves the API accepts it.
+        try:
+            team_data = await auth_manager.get_my_team()
+        except Exception as e:
+            return {
+                "updated": False,
+                "error": f"Token was stored but failed validation: {e}. Ask the "
+                         "user to copy a fresh oidc.user value and try again."
+            }
+
+        return {
+            "updated": True,
+            "team_id": team_id,
+            "squad_picks": len(team_data.get("picks", [])),
+            "note": "Token validated and stored. The copy in the user's browser "
+                    "has been superseded; their browser session will recover on "
+                    "its own."
+        }

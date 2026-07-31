@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Union
 from ..api import api
 from ..cache import get_player_map
 from ..utils.concurrency import gather_limited
+from ..utils.gameweek import get_current_gameweek_id
 
 # Set up logging following project conventions
 logger = logging.getLogger("fpl-mcp-server.fixtures")
@@ -126,20 +127,8 @@ async def get_player_fixtures(player_id: int, num_fixtures: int = 5) -> List[Dic
         logger.warning("No fixtures data found")
         return []
     
-    # Get gameweeks to determine current gameweek
-    gameweeks = await api.get_gameweeks()
-    current_gameweek = None
-    for gw in gameweeks:
-        if gw.get("is_current"):
-            current_gameweek = gw.get("id")
-            break
-    
-    if not current_gameweek:
-        for gw in gameweeks:
-            if gw.get("is_next"):
-                current_gameweek = gw.get("id") - 1
-                break
-    
+    # Determine current gameweek
+    current_gameweek = await get_current_gameweek_id()
     if not current_gameweek:
         logger.warning("Could not determine current gameweek")
         return []
@@ -477,21 +466,7 @@ async def get_player_gameweek_history(player_ids: List[int], num_gameweeks: int 
     logger.info(f"Getting gameweek history for {len(player_ids)} players, {num_gameweeks} gameweeks")
     
     # Get current gameweek to determine range
-    gameweeks = await api.get_gameweeks()
-    current_gameweek = None
-    
-    for gw in gameweeks:
-        if gw.get("is_current"):
-            current_gameweek = gw.get("id")
-            break
-            
-    if current_gameweek is None:
-        # If no current gameweek found, try to find next gameweek
-        for gw in gameweeks:
-            if gw.get("is_next"):
-                current_gameweek = gw.get("id") - 1
-                break
-    
+    current_gameweek = await get_current_gameweek_id()
     if current_gameweek is None:
         logger.warning("Could not determine current gameweek")
         return {"error": "Could not determine current gameweek"}

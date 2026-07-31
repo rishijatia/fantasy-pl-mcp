@@ -214,9 +214,9 @@ class TestUpdateCredentialsTool:
 
     @staticmethod
     def tool(server):
-        # FastMCP's decorator may wrap the function; unwrap if needed.
-        fn = server.update_fpl_credentials
-        return getattr(fn, "fn", fn)
+        # The tool lives in fpl/tools/team.py's register_tools closure, so
+        # fetch the registered function from the server's tool manager.
+        return server.mcp._tool_manager.get_tool("update_fpl_credentials").fn
 
     def test_rejects_input_without_token(self, server):
         result = asyncio.run(self.tool(server)("{not json"))

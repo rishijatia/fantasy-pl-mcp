@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from ..resources.players import get_player_by_id, find_players_by_name
 from ..resources.gameweeks import get_current_gameweek_resource
 from ..resources.fixtures import get_player_fixtures, get_player_gameweek_history
+from ..utils.difficulty import assess_fixtures, fixture_score
 
 
 async def get_player_info(
@@ -198,33 +199,16 @@ async def get_player_info(
         if fixtures_data:
             result["upcoming_fixtures"] = fixtures_data
 
-            # Calculate average fixture difficulty
-            difficulty_values = [f.get("difficulty", 3) for f in fixtures_data]
-            avg_difficulty = (
-                sum(difficulty_values) / len(difficulty_values) if difficulty_values else 3
-            )
-
-            # Convert to a 1-10 scale where 10 is best (easiest fixtures)
-            fixture_score = (6 - avg_difficulty) * 2
+            # Score fixtures on the standard 0-10 scale (10 = easiest)
+            score = fixture_score(fixtures_data)
 
             result["fixture_analysis"] = {
-                "difficulty_score": round(fixture_score, 1),
+                "difficulty_score": score,
                 "fixtures_analyzed": len(fixtures_data),
                 "home_matches": sum(1 for f in fixtures_data if f.get("location") == "home"),
                 "away_matches": sum(1 for f in fixtures_data if f.get("location") == "away"),
+                "assessment": assess_fixtures(score),
             }
-
-            # Add fixture difficulty assessment
-            if "fixture_analysis" in result and isinstance(result["fixture_analysis"], dict):
-                fixture_analysis = result["fixture_analysis"]
-                if fixture_score >= 8:
-                    fixture_analysis["assessment"] = "Excellent fixtures"
-                elif fixture_score >= 6:
-                    fixture_analysis["assessment"] = "Good fixtures"
-                elif fixture_score >= 4:
-                    fixture_analysis["assessment"] = "Average fixtures"
-                else:
-                    fixture_analysis["assessment"] = "Difficult fixtures"
 
     return result
 
