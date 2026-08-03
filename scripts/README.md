@@ -2,9 +2,34 @@
 
 Utility scripts for the Fantasy Premier League MCP project.
 
+## Bootstrap Schema Generator
+
+`generate_static_schema.py` generates the versioned schema the server ships for
+FPL's `bootstrap-static/` payload. **This is the one to use for the bundled
+schema** — it needs no dependencies beyond `jsonschema`.
+
+```bash
+# Write a schema for the current season to src/fpl_mcp/schemas/
+./generate_static_schema.py
+
+# Check whether live data still matches the bundled schema (exits non-zero if not)
+./generate_static_schema.py --check
+
+# Generate from a saved payload instead of the network
+./generate_static_schema.py --input raw.json
+```
+
+Regenerate at the start of each season, or whenever `--check` fails. See
+[`src/fpl_mcp/schemas/README.md`](../src/fpl_mcp/schemas/README.md) for how the
+schemas are versioned and why they are deliberately tolerant.
+
 ## Schema Extractor
 
-The `schema_extractor.py` script fetches JSON data from a URL and automatically extracts its schema structure.
+`schema_extractor.py` is a general-purpose tool that fetches JSON from any URL
+and extracts its structure. It is kept for ad-hoc exploration of other FPL
+endpoints; it is *not* used for the bundled schema, because it infers each
+field's type from the first array item only and marks every non-null field
+required, which is what caused the bundled schema to rot between seasons.
 
 ### Setup
 

@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Price change tool (`get_price_changes`) for current-gameweek risers and fallers
 - Captain suggestion tool (`suggest_captain`) ranking your squad with a transparent score breakdown
 - Full tool listing in the README, grouped by category
+- Per-season versioned JSON schemas (`static_schema_<season>.json`), resolved
+  newest-first and overridable with `FPL_STATIC_SCHEMA_PATH`
+- `scripts/generate_static_schema.py` to generate and `--check` the bundled
+  schema, documented in `src/fpl_mcp/schemas/README.md`
 
 ### Fixed
 - Constrained the `mcp` dependency to the 1.x line. mcp 2.0 removed
@@ -30,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema validation no longer dumps a ~100KB report into the logs on every
   cold fetch when FPL's payload drifts from the bundled snapshot; it now logs a
   one-line advisory summary
+- Regenerated the bundled schema for 2026/27, which now validates live data
+  cleanly. It unions types across all array items, leaves fields that are null
+  everywhere unconstrained, and requires only a curated core of fields, so FPL
+  adding or retiring a stat no longer invalidates it
 
 ### Changed
 - Parallelized N+1 API request loops for league and history fetches

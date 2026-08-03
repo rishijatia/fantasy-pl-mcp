@@ -40,8 +40,30 @@ FPL_OIDC_CLIENT_ID = os.getenv(
 # Caching configuration
 CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # Default: 1 hour
 
-# Schema paths
-STATIC_SCHEMA_PATH = SCHEMAS_DIR / "static_schema.json"
+# Schema paths. Schemas are versioned per season as
+# static_schema_<season>.json (e.g. static_schema_2026-27.json) because FPL
+# reshapes its payload every year. The newest one ships as the default;
+# season labels sort correctly as plain strings. FPL_STATIC_SCHEMA_PATH
+# overrides the choice, and the unversioned file is the legacy fallback.
+LEGACY_STATIC_SCHEMA_PATH = SCHEMAS_DIR / "static_schema.json"
+
+
+def resolve_static_schema_path() -> pathlib.Path:
+    """Pick the schema describing the most recent season we know about.
+
+    Returns:
+        Path to the newest versioned schema, falling back to the legacy
+        unversioned file when no versioned schema is present
+    """
+    override = os.getenv("FPL_STATIC_SCHEMA_PATH")
+    if override:
+        return pathlib.Path(override)
+
+    versioned = sorted(SCHEMAS_DIR.glob("static_schema_*.json"))
+    return versioned[-1] if versioned else LEGACY_STATIC_SCHEMA_PATH
+
+
+STATIC_SCHEMA_PATH = resolve_static_schema_path()
 
 # Rate limiting configuration
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "20"))
