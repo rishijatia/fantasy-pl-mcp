@@ -275,6 +275,9 @@ async def test_live_scores_reports_gameweek_not_started():
     assert result["gameweek"] == 91
     assert result["players"] == []
     assert "not started yet" in result["note"]
+    # Same shape as a successful response, so clients need no special casing
+    assert result["bonus_added"] is None
+    assert result["players_with_minutes"] == 0
     await api.close()
 
 
@@ -292,6 +295,9 @@ async def test_dream_team_reports_gameweek_not_played():
     assert result["gameweek"] == 92
     assert result["team"] == []
     assert "not been played yet" in result["note"]
+    # Same shape as a successful response, so clients need no special casing
+    assert result["total_points"] == 0
+    assert result["top_player"]["points"] == 0
     await api.close()
 
 

@@ -24,7 +24,10 @@ async def get_current_gameweek_id() -> Optional[int]:
 
     for gw in gameweeks:
         if gw.get("is_next"):
-            return max(1, gw.get("id") - 1)
+            gw_id = gw.get("id")
+            if gw_id is None:
+                return None
+            return max(1, gw_id - 1)
 
     return None
 

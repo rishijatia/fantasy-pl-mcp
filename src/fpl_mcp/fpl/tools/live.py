@@ -68,8 +68,11 @@ def register_tools(mcp):
             live_data = await api.get_live_event_data(gameweek_id)
         except Exception as e:
             if _not_played_yet(e):
+                # Keep the success shape so clients need no special casing
                 return {
                     "gameweek": gameweek_id,
+                    "bonus_added": None,
+                    "players_with_minutes": 0,
                     "players": [],
                     "note": f"Gameweek {gameweek_id} has not started yet, so there are no live scores",
                 }
@@ -162,9 +165,12 @@ def register_tools(mcp):
             dream_data = await api.get_dream_team(gameweek_id)
         except Exception as e:
             if _not_played_yet(e):
+                # Keep the success shape so clients need no special casing
                 return {
                     "gameweek": gameweek_id,
                     "team": [],
+                    "total_points": 0,
+                    "top_player": {"id": None, "name": None, "points": 0},
                     "note": f"Gameweek {gameweek_id} has not been played yet, so there is no dream team",
                 }
             return {"error": f"Could not fetch dream team for gameweek {gameweek_id}: {e}"}

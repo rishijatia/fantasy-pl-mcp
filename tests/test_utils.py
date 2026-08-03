@@ -130,3 +130,17 @@ async def test_next_gameweek_rolls_past_finished_final_gameweek():
 async def test_next_gameweek_none_when_undeterminable():
     with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_NONE)):
         assert await get_next_gameweek_id() is None
+
+
+# A malformed payload must not crash callers with a TypeError.
+GWS_NEXT_WITHOUT_ID = [{"is_current": False, "is_next": True}]
+
+
+async def test_current_gameweek_handles_next_without_id():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_NEXT_WITHOUT_ID)):
+        assert await get_current_gameweek_id() is None
+
+
+async def test_next_gameweek_handles_next_without_id():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_NEXT_WITHOUT_ID)):
+        assert await get_next_gameweek_id() is None
