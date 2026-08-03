@@ -70,4 +70,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-fpl_mcp = ["schemas/*.json"]
+fpl_mcp = ["schemas/*.json", "schemas/*.md"]

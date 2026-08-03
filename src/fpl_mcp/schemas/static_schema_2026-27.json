@@ -1,4 +1,6 @@
 {
+  "season": "2026-27",
+  "source": "https://fantasy.premierleague.com/api/bootstrap-static/",
   "root_type": "object",
   "schema": {
     "type": "object",
@@ -41,26 +43,10 @@
                   "type": "array",
                   "items": {}
                 },
-                "pick_multiplier": {
-                  "type": "null"
-                }
-              },
-              "required": [
-                "rules",
-                "scoring",
-                "element_types"
-              ]
+                "pick_multiplier": {}
+              }
             }
-          },
-          "required": [
-            "id",
-            "name",
-            "number",
-            "start_event",
-            "stop_event",
-            "chip_type",
-            "overrides"
-          ]
+          }
         }
       },
       "events": {
@@ -77,9 +63,7 @@
             "deadline_time": {
               "type": "string"
             },
-            "release_time": {
-              "type": "null"
-            },
+            "release_time": {},
             "average_entry_score": {
               "type": "integer"
             },
@@ -89,18 +73,14 @@
             "data_checked": {
               "type": "boolean"
             },
-            "highest_scoring_entry": {
-              "type": "integer"
-            },
+            "highest_scoring_entry": {},
             "deadline_time_epoch": {
               "type": "integer"
             },
             "deadline_time_game_offset": {
               "type": "integer"
             },
-            "highest_score": {
-              "type": "integer"
-            },
+            "highest_score": {},
             "is_previous": {
               "type": "boolean"
             },
@@ -143,97 +123,33 @@
                   "type": "array",
                   "items": {}
                 },
-                "pick_multiplier": {
-                  "type": "null"
-                }
-              },
-              "required": [
-                "rules",
-                "scoring",
-                "element_types"
-              ]
+                "pick_multiplier": {}
+              }
             },
             "chip_plays": {
               "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "chip_name": {
-                    "type": "string"
-                  },
-                  "num_played": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "chip_name",
-                  "num_played"
-                ]
-              }
+              "items": {}
             },
-            "most_selected": {
-              "type": "integer"
-            },
-            "most_transferred_in": {
-              "type": "integer"
-            },
-            "top_element": {
-              "type": "integer"
-            },
-            "top_element_info": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "integer"
-                },
-                "points": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "id",
-                "points"
-              ]
-            },
+            "most_selected": {},
+            "most_transferred_in": {},
+            "top_element": {},
+            "top_element_info": {},
             "transfers_made": {
               "type": "integer"
             },
-            "most_captained": {
-              "type": "integer"
-            },
-            "most_vice_captained": {
-              "type": "integer"
-            }
+            "most_captained": {},
+            "most_vice_captained": {}
           },
           "required": [
-            "id",
-            "name",
-            "deadline_time",
-            "average_entry_score",
-            "finished",
             "data_checked",
-            "highest_scoring_entry",
-            "deadline_time_epoch",
-            "deadline_time_game_offset",
+            "deadline_time",
+            "finished",
             "highest_score",
-            "is_previous",
+            "id",
             "is_current",
             "is_next",
-            "cup_leagues_created",
-            "h2h_ko_matches_created",
-            "can_enter",
-            "can_manage",
-            "released",
-            "ranked_count",
-            "overrides",
-            "chip_plays",
-            "most_selected",
-            "most_transferred_in",
-            "top_element",
-            "top_element_info",
-            "transfers_made",
-            "most_captained",
-            "most_vice_captained"
+            "is_previous",
+            "name"
           ]
         }
       },
@@ -273,18 +189,10 @@
           "league_ko_first_instead_of_random": {
             "type": "boolean"
           },
-          "cup_start_event_id": {
-            "type": "null"
-          },
-          "cup_stop_event_id": {
-            "type": "null"
-          },
-          "cup_qualifying_method": {
-            "type": "null"
-          },
-          "cup_type": {
-            "type": "null"
-          },
+          "cup_start_event_id": {},
+          "cup_stop_event_id": {},
+          "cup_qualifying_method": {},
+          "cup_type": {},
           "featured_entries": {
             "type": "array",
             "items": {}
@@ -307,12 +215,8 @@
           "squad_squadsize": {
             "type": "integer"
           },
-          "squad_special_min": {
-            "type": "null"
-          },
-          "squad_special_max": {
-            "type": "null"
-          },
+          "squad_special_min": {},
+          "squad_special_max": {},
           "squad_team_limit": {
             "type": "integer"
           },
@@ -353,38 +257,7 @@
           "timezone": {
             "type": "string"
           }
-        },
-        "required": [
-          "league_join_private_max",
-          "league_join_public_max",
-          "league_max_size_public_classic",
-          "league_max_size_public_h2h",
-          "league_max_size_private_h2h",
-          "league_max_ko_rounds_private_h2h",
-          "league_prefix_public",
-          "league_points_h2h_win",
-          "league_points_h2h_lose",
-          "league_points_h2h_draw",
-          "league_ko_first_instead_of_random",
-          "featured_entries",
-          "element_sell_at_purchase_price",
-          "percentile_ranks",
-          "underdog_differential",
-          "squad_squadplay",
-          "squad_squadsize",
-          "squad_team_limit",
-          "squad_total_spend",
-          "ui_currency_multiplier",
-          "ui_use_special_shirts",
-          "ui_special_shirt_exclusions",
-          "stats_form_days",
-          "sys_vice_captain_enabled",
-          "transfers_cap",
-          "transfers_sell_on_fee",
-          "max_extra_free_transfers",
-          "league_h2h_tiebreak_stats",
-          "timezone"
-        ]
+        }
       },
       "game_config": {
         "type": "object",
@@ -397,12 +270,11 @@
               },
               "timezone": {
                 "type": "string"
+              },
+              "static_content_url": {
+                "type": "string"
               }
-            },
-            "required": [
-              "entry_per_event",
-              "timezone"
-            ]
+            }
           },
           "rules": {
             "type": "object",
@@ -440,18 +312,10 @@
               "league_ko_first_instead_of_random": {
                 "type": "boolean"
               },
-              "cup_start_event_id": {
-                "type": "null"
-              },
-              "cup_stop_event_id": {
-                "type": "null"
-              },
-              "cup_qualifying_method": {
-                "type": "null"
-              },
-              "cup_type": {
-                "type": "null"
-              },
+              "cup_start_event_id": {},
+              "cup_stop_event_id": {},
+              "cup_qualifying_method": {},
+              "cup_type": {},
               "featured_entries": {
                 "type": "array",
                 "items": {}
@@ -474,12 +338,8 @@
               "squad_squadsize": {
                 "type": "integer"
               },
-              "squad_special_min": {
-                "type": "null"
-              },
-              "squad_special_max": {
-                "type": "null"
-              },
+              "squad_special_min": {},
+              "squad_special_max": {},
               "squad_team_limit": {
                 "type": "integer"
               },
@@ -517,37 +377,7 @@
                   "type": "string"
                 }
               }
-            },
-            "required": [
-              "league_join_private_max",
-              "league_join_public_max",
-              "league_max_size_public_classic",
-              "league_max_size_public_h2h",
-              "league_max_size_private_h2h",
-              "league_max_ko_rounds_private_h2h",
-              "league_prefix_public",
-              "league_points_h2h_win",
-              "league_points_h2h_lose",
-              "league_points_h2h_draw",
-              "league_ko_first_instead_of_random",
-              "featured_entries",
-              "element_sell_at_purchase_price",
-              "percentile_ranks",
-              "underdog_differential",
-              "squad_squadplay",
-              "squad_squadsize",
-              "squad_team_limit",
-              "squad_total_spend",
-              "ui_currency_multiplier",
-              "ui_use_special_shirts",
-              "ui_special_shirt_exclusions",
-              "stats_form_days",
-              "sys_vice_captain_enabled",
-              "transfers_cap",
-              "transfers_sell_on_fee",
-              "max_extra_free_transfers",
-              "league_h2h_tiebreak_stats"
-            ]
+            }
           },
           "scoring": {
             "type": "object",
@@ -572,18 +402,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "saves": {
                 "type": "integer"
@@ -602,18 +422,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "assists": {
                 "type": "integer"
@@ -632,18 +442,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "penalties_saved": {
                 "type": "integer"
@@ -681,6 +481,35 @@
               "special_multiplier": {
                 "type": "integer"
               },
+              "tackles": {
+                "type": "integer"
+              },
+              "clearances_blocks_interceptions": {
+                "type": "integer"
+              },
+              "recoveries": {
+                "type": "integer"
+              },
+              "defensive_contribution": {
+                "type": "object",
+                "properties": {
+                  "DEF": {
+                    "type": "integer"
+                  },
+                  "FWD": {
+                    "type": "integer"
+                  },
+                  "GKP": {
+                    "type": "integer"
+                  },
+                  "MID": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "starts": {
+                "type": "integer"
+              },
               "mng_goals_scored": {
                 "type": "object",
                 "properties": {
@@ -695,18 +524,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "mng_clean_sheets": {
                 "type": "object",
@@ -722,18 +541,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "mng_win": {
                 "type": "object",
@@ -749,18 +558,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "mng_draw": {
                 "type": "object",
@@ -776,18 +575,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "mng_loss": {
                 "type": "integer"
@@ -806,18 +595,8 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
               },
               "mng_underdog_draw": {
                 "type": "object",
@@ -833,55 +612,24 @@
                   },
                   "MID": {
                     "type": "integer"
-                  },
-                  "MNG": {
-                    "type": "integer"
                   }
-                },
-                "required": [
-                  "DEF",
-                  "FWD",
-                  "GKP",
-                  "MID",
-                  "MNG"
-                ]
+                }
+              },
+              "expected_assists": {
+                "type": "integer"
+              },
+              "expected_goal_involvements": {
+                "type": "integer"
+              },
+              "expected_goals_conceded": {
+                "type": "integer"
+              },
+              "expected_goals": {
+                "type": "integer"
               }
-            },
-            "required": [
-              "long_play",
-              "short_play",
-              "goals_conceded",
-              "saves",
-              "goals_scored",
-              "assists",
-              "clean_sheets",
-              "penalties_saved",
-              "penalties_missed",
-              "yellow_cards",
-              "red_cards",
-              "own_goals",
-              "bonus",
-              "bps",
-              "influence",
-              "creativity",
-              "threat",
-              "ict_index",
-              "special_multiplier",
-              "mng_goals_scored",
-              "mng_clean_sheets",
-              "mng_win",
-              "mng_draw",
-              "mng_loss",
-              "mng_underdog_win",
-              "mng_underdog_draw"
-            ]
+            }
           }
-        },
-        "required": [
-          "settings",
-          "rules",
-          "scoring"
-        ]
+        }
       },
       "phases": {
         "type": "array",
@@ -900,17 +648,8 @@
             "stop_event": {
               "type": "integer"
             },
-            "highest_score": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "id",
-            "name",
-            "start_event",
-            "stop_event",
-            "highest_score"
-          ]
+            "highest_score": {}
+          }
         }
       },
       "teams": {
@@ -924,9 +663,7 @@
             "draw": {
               "type": "integer"
             },
-            "form": {
-              "type": "null"
-            },
+            "form": {},
             "id": {
               "type": "integer"
             },
@@ -948,17 +685,16 @@
             "short_name": {
               "type": "string"
             },
-            "strength": {
-              "type": "integer"
-            },
-            "team_division": {
-              "type": "null"
-            },
+            "strength": {},
+            "team_division": {},
             "unavailable": {
               "type": "boolean"
             },
             "win": {
               "type": "integer"
+            },
+            "link_url": {
+              "type": "string"
             },
             "strength_overall_home": {
               "type": "integer"
@@ -984,24 +720,17 @@
           },
           "required": [
             "code",
-            "draw",
             "id",
-            "loss",
             "name",
-            "played",
-            "points",
             "position",
             "short_name",
             "strength",
-            "unavailable",
-            "win",
-            "strength_overall_home",
-            "strength_overall_away",
-            "strength_attack_home",
             "strength_attack_away",
-            "strength_defence_home",
+            "strength_attack_home",
             "strength_defence_away",
-            "pulse_id"
+            "strength_defence_home",
+            "strength_overall_away",
+            "strength_overall_home"
           ]
         }
       },
@@ -1019,11 +748,7 @@
             "name": {
               "type": "string"
             }
-          },
-          "required": [
-            "label",
-            "name"
-          ]
+          }
         }
       },
       "element_types": {
@@ -1049,12 +774,8 @@
             "squad_select": {
               "type": "integer"
             },
-            "squad_min_select": {
-              "type": "null"
-            },
-            "squad_max_select": {
-              "type": "null"
-            },
+            "squad_min_select": {},
+            "squad_max_select": {},
             "squad_min_play": {
               "type": "integer"
             },
@@ -1075,17 +796,7 @@
             }
           },
           "required": [
-            "id",
-            "plural_name",
-            "plural_name_short",
-            "singular_name",
-            "singular_name_short",
-            "squad_select",
-            "squad_min_play",
-            "squad_max_play",
-            "ui_shirt_specific",
-            "sub_positions_locked",
-            "element_count"
+            "id"
           ]
         }
       },
@@ -1101,11 +812,12 @@
               "type": "boolean"
             },
             "chance_of_playing_next_round": {
-              "type": "integer"
+              "type": [
+                "integer",
+                "null"
+              ]
             },
-            "chance_of_playing_this_round": {
-              "type": "integer"
-            },
+            "chance_of_playing_this_round": {},
             "code": {
               "type": "integer"
             },
@@ -1121,6 +833,9 @@
             "cost_change_start_fall": {
               "type": "integer"
             },
+            "price_change_percent": {
+              "type": "string"
+            },
             "dreamteam_count": {
               "type": "integer"
             },
@@ -1130,9 +845,7 @@
             "ep_next": {
               "type": "string"
             },
-            "ep_this": {
-              "type": "string"
-            },
+            "ep_this": {},
             "event_points": {
               "type": "integer"
             },
@@ -1152,7 +865,10 @@
               "type": "string"
             },
             "news_added": {
-              "type": "string"
+              "type": [
+                "null",
+                "string"
+              ]
             },
             "now_cost": {
               "type": "integer"
@@ -1175,9 +891,7 @@
             "special": {
               "type": "boolean"
             },
-            "squad_number": {
-              "type": "null"
-            },
+            "squad_number": {},
             "status": {
               "type": "string"
             },
@@ -1211,14 +925,26 @@
             "web_name": {
               "type": "string"
             },
+            "known_name": {
+              "type": "string"
+            },
             "region": {
-              "type": "null"
+              "type": [
+                "integer",
+                "null"
+              ]
             },
             "team_join_date": {
-              "type": "null"
+              "type": [
+                "null",
+                "string"
+              ]
             },
             "birth_date": {
-              "type": "null"
+              "type": [
+                "null",
+                "string"
+              ]
             },
             "has_temporary_code": {
               "type": "boolean"
@@ -1277,6 +1003,18 @@
             "ict_index": {
               "type": "string"
             },
+            "clearances_blocks_interceptions": {
+              "type": "integer"
+            },
+            "recoveries": {
+              "type": "integer"
+            },
+            "tackles": {
+              "type": "integer"
+            },
+            "defensive_contribution": {
+              "type": "integer"
+            },
             "starts": {
               "type": "integer"
             },
@@ -1292,26 +1030,39 @@
             "expected_goals_conceded": {
               "type": "string"
             },
-            "mng_win": {
-              "type": "integer"
+            "corners_and_indirect_freekicks_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
             },
-            "mng_draw": {
-              "type": "integer"
+            "corners_and_indirect_freekicks_text": {
+              "type": "string"
             },
-            "mng_loss": {
-              "type": "integer"
+            "direct_freekicks_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
             },
-            "mng_underdog_win": {
-              "type": "integer"
+            "direct_freekicks_text": {
+              "type": "string"
             },
-            "mng_underdog_draw": {
-              "type": "integer"
+            "penalties_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
             },
-            "mng_clean_sheets": {
-              "type": "integer"
+            "penalties_text": {
+              "type": "string"
             },
-            "mng_goals_scored": {
-              "type": "integer"
+            "scout_risks": {
+              "type": "array",
+              "items": {}
+            },
+            "scout_news_link": {
+              "type": "string"
             },
             "influence_rank": {
               "type": "integer"
@@ -1337,41 +1088,23 @@
             "ict_index_rank_type": {
               "type": "integer"
             },
-            "corners_and_indirect_freekicks_order": {
-              "type": "null"
-            },
-            "corners_and_indirect_freekicks_text": {
-              "type": "string"
-            },
-            "direct_freekicks_order": {
-              "type": "null"
-            },
-            "direct_freekicks_text": {
-              "type": "string"
-            },
-            "penalties_order": {
-              "type": "null"
-            },
-            "penalties_text": {
-              "type": "string"
-            },
             "expected_goals_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "saves_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "expected_assists_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "expected_goal_involvements_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "expected_goals_conceded_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "goals_conceded_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "now_cost_rank": {
               "type": "integer"
@@ -1398,129 +1131,67 @@
               "type": "integer"
             },
             "starts_per_90": {
-              "type": "integer"
+              "type": "number"
             },
             "clean_sheets_per_90": {
-              "type": "integer"
+              "type": "number"
+            },
+            "defensive_contribution_per_90": {
+              "type": "number"
             }
           },
           "required": [
-            "can_transact",
-            "can_select",
-            "chance_of_playing_next_round",
-            "chance_of_playing_this_round",
-            "code",
-            "cost_change_event",
-            "cost_change_event_fall",
-            "cost_change_start",
-            "cost_change_start_fall",
-            "dreamteam_count",
-            "element_type",
-            "ep_next",
-            "ep_this",
-            "event_points",
-            "first_name",
-            "form",
-            "id",
-            "in_dreamteam",
-            "news",
-            "news_added",
-            "now_cost",
-            "photo",
-            "points_per_game",
-            "removed",
-            "second_name",
-            "selected_by_percent",
-            "special",
-            "status",
-            "team",
-            "team_code",
-            "total_points",
-            "transfers_in",
-            "transfers_in_event",
-            "transfers_out",
-            "transfers_out_event",
-            "value_form",
-            "value_season",
-            "web_name",
-            "has_temporary_code",
-            "opta_code",
-            "minutes",
-            "goals_scored",
             "assists",
-            "clean_sheets",
-            "goals_conceded",
-            "own_goals",
-            "penalties_saved",
-            "penalties_missed",
-            "yellow_cards",
-            "red_cards",
-            "saves",
             "bonus",
             "bps",
-            "influence",
+            "chance_of_playing_next_round",
+            "clean_sheets",
+            "cost_change_event",
+            "cost_change_start",
             "creativity",
-            "threat",
+            "element_type",
+            "first_name",
+            "form",
+            "goals_conceded",
+            "goals_scored",
             "ict_index",
+            "id",
+            "influence",
+            "minutes",
+            "news",
+            "now_cost",
+            "own_goals",
+            "penalties_missed",
+            "penalties_saved",
+            "points_per_game",
+            "red_cards",
+            "saves",
+            "second_name",
+            "selected_by_percent",
             "starts",
-            "expected_goals",
-            "expected_assists",
-            "expected_goal_involvements",
-            "expected_goals_conceded",
-            "mng_win",
-            "mng_draw",
-            "mng_loss",
-            "mng_underdog_win",
-            "mng_underdog_draw",
-            "mng_clean_sheets",
-            "mng_goals_scored",
-            "influence_rank",
-            "influence_rank_type",
-            "creativity_rank",
-            "creativity_rank_type",
-            "threat_rank",
-            "threat_rank_type",
-            "ict_index_rank",
-            "ict_index_rank_type",
-            "corners_and_indirect_freekicks_text",
-            "direct_freekicks_text",
-            "penalties_text",
-            "expected_goals_per_90",
-            "saves_per_90",
-            "expected_assists_per_90",
-            "expected_goal_involvements_per_90",
-            "expected_goals_conceded_per_90",
-            "goals_conceded_per_90",
-            "now_cost_rank",
-            "now_cost_rank_type",
-            "form_rank",
-            "form_rank_type",
-            "points_per_game_rank",
-            "points_per_game_rank_type",
-            "selected_rank",
-            "selected_rank_type",
-            "starts_per_90",
-            "clean_sheets_per_90"
+            "status",
+            "team",
+            "threat",
+            "total_points",
+            "transfers_in_event",
+            "transfers_out_event",
+            "web_name",
+            "yellow_cards"
           ]
         }
       }
     },
     "required": [
-      "chips",
-      "events",
-      "game_settings",
-      "game_config",
-      "phases",
-      "teams",
-      "total_players",
-      "element_stats",
+      "elements",
       "element_types",
-      "elements"
+      "events",
+      "teams"
     ]
   },
   "stats": {
     "property_count": 10,
-    "nested_objects": 2,
-    "nested_arrays": 7
+    "required_count": 4,
+    "player_count": 564,
+    "team_count": 20
   }
 }
