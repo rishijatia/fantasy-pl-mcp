@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/rishijatia-fantasy-pl-mcp-badge.png)](https://mseep.ai/app/rishijatia-fantasy-pl-mcp)
+
 # Fantasy Premier League MCP Server
 
 [![PyPI version](https://badge.fury.io/py/fpl-mcp.svg)](https://badge.fury.io/py/fpl-mcp)
