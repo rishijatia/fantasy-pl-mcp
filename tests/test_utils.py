@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 from fpl_mcp.fpl.utils.difficulty import assess_fixtures, fixture_score, score_from_average
-from fpl_mcp.fpl.utils.gameweek import get_current_gameweek_id
+from fpl_mcp.fpl.utils.gameweek import get_current_gameweek_id, get_next_gameweek_id
 from fpl_mcp.fpl.utils.params import unwrap
 
 
@@ -90,3 +90,43 @@ async def test_current_gameweek_falls_back_to_next_minus_one():
 async def test_current_gameweek_none_when_undeterminable():
     with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_NONE)):
         assert await get_current_gameweek_id() is None
+
+
+# Pre-season: nothing is current and gameweek 1 is next, so the
+# (next - 1) fallback would otherwise produce an invalid gameweek 0.
+GWS_PRESEASON = [
+    {"id": 1, "is_current": False, "is_next": True, "finished": False},
+    {"id": 2, "is_current": False, "is_next": False, "finished": False},
+]
+
+
+async def test_current_gameweek_clamped_to_one_preseason():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_PRESEASON)):
+        assert await get_current_gameweek_id() == 1
+
+
+async def test_next_gameweek_is_one_preseason():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_PRESEASON)):
+        assert await get_next_gameweek_id() == 1
+
+
+async def test_next_gameweek_uses_is_next_mid_season():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_BETWEEN)):
+        assert await get_next_gameweek_id() == 13
+
+
+async def test_next_gameweek_is_unfinished_current_when_no_next():
+    gws = [{"id": 38, "is_current": True, "is_next": False, "finished": False}]
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=gws)):
+        assert await get_next_gameweek_id() == 38
+
+
+async def test_next_gameweek_rolls_past_finished_final_gameweek():
+    gws = [{"id": 38, "is_current": True, "is_next": False, "finished": True}]
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=gws)):
+        assert await get_next_gameweek_id() == 39
+
+
+async def test_next_gameweek_none_when_undeterminable():
+    with patch("fpl_mcp.fpl.utils.gameweek.api.get_gameweeks", new=AsyncMock(return_value=GWS_NONE)):
+        assert await get_next_gameweek_id() is None

@@ -175,17 +175,39 @@ npx @modelcontextprotocol/inspector python -m fpl_mcp
 - `fpl://gameweeks/double` - Information about upcoming double gameweeks
 
 ## Available Tools
+
+### Players
+- `search_fpl_players` - Search for players by name, with optional position and team filters
+- `get_player_information` - Get detailed information and gameweek history for a player
+- `analyze_players` - Filter and analyze FPL players based on multiple criteria
+- `compare_players` - Compare multiple players across various metrics
+- `get_price_changes` - Get players whose price rose or fell in the current gameweek
+
+### Fixtures and gameweeks
 - `get_gameweek_status` - Get precise information about current, previous, and next gameweeks
 - `analyze_player_fixtures` - Analyze upcoming fixtures for a player with difficulty ratings
+- `analyze_fixtures` - Analyze upcoming fixtures for players, teams, or positions
 - `get_blank_gameweeks` - Get information about upcoming blank gameweeks
 - `get_double_gameweeks` - Get information about upcoming double gameweeks
-- `analyze_players` - Filter and analyze FPL players based on multiple criteria
-- `analyze_fixtures` - Analyze upcoming fixtures for players, teams, or positions
-- `compare_players` - Compare multiple players across various metrics
+
+### Live gameweek
+- `get_gameweek_live_scores` - Live player points and stats while matches are being played
+- `get_dream_team` - The official highest-scoring XI for a gameweek
+
+### Your team and advice
+- `suggest_captain` - Rank your squad by captain score with per-component reasoning
 - `check_fpl_authentication` - Check if FPL authentication is working correctly
+- `update_fpl_credentials` - Update your stored FPL credentials from within a chat
 - `get_my_team` - View your authenticated team (requires authentication)
+- `get_my_current_team` - View your current team for the active gameweek (requires authentication)
 - `get_team` - View any team with a specific ID (requires authentication)
+- `get_manager` - Get manager details for a specific team ID (requires authentication)
 - `get_manager_info` - Get manager details (requires authentication)
+- `get_manager_transfer_history` - Get a manager's full transfer history
+
+### Leagues
+- `get_league_standings` - Get standings for a classic league (requires authentication)
+- `get_league_analytics` - Analyze a league's managers, ownership trends, and performance
 
 ## Prompt Templates
 - `player_analysis_prompt` - Create a prompt for analyzing an FPL player in depth

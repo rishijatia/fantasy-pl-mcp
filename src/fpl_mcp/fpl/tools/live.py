@@ -2,6 +2,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+import httpx
+
 from ..api import api
 from ..cache import get_player_map
 from ..utils.gameweek import get_current_gameweek_id
@@ -18,6 +20,18 @@ async def _team_name_maps():
     )
 
 _POSITIONS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
+
+
+def _not_played_yet(error: Exception) -> bool:
+    """Whether an error means the gameweek simply hasn't been played yet.
+
+    The FPL API returns 404 for endpoints tied to a gameweek that has not
+    started, which is the normal state pre-season rather than a failure.
+    """
+    return (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.status_code == 404
+    )
 
 
 def register_tools(mcp):
@@ -53,6 +67,12 @@ def register_tools(mcp):
         try:
             live_data = await api.get_live_event_data(gameweek_id)
         except Exception as e:
+            if _not_played_yet(e):
+                return {
+                    "gameweek": gameweek_id,
+                    "players": [],
+                    "note": f"Gameweek {gameweek_id} has not started yet, so there are no live scores",
+                }
             return {"error": f"Could not fetch live data for gameweek {gameweek_id}: {e}"}
 
         player_map = await get_player_map()
@@ -141,6 +161,12 @@ def register_tools(mcp):
         try:
             dream_data = await api.get_dream_team(gameweek_id)
         except Exception as e:
+            if _not_played_yet(e):
+                return {
+                    "gameweek": gameweek_id,
+                    "team": [],
+                    "note": f"Gameweek {gameweek_id} has not been played yet, so there is no dream team",
+                }
             return {"error": f"Could not fetch dream team for gameweek {gameweek_id}: {e}"}
 
         player_map = await get_player_map()

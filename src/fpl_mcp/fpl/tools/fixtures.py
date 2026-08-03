@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from ..cache import get_cached_player_data
 from ..resources import fixtures, players, teams
 from ..utils.difficulty import assess_fixtures, fixture_score
-from ..utils.gameweek import get_current_gameweek_id
+from ..utils.gameweek import get_current_gameweek_id, get_next_gameweek_id
 from ..utils.params import unwrap
 from ..utils.position_utils import normalize_position
 
@@ -78,17 +78,23 @@ def register_tools(mcp):
         if entity_type not in ["player", "team", "position"]:
             return {"error": f"Invalid entity type: {entity_type}. Must be 'player', 'team', or 'position'"}
 
-        # Get current gameweek
+        # Get current gameweek, plus the next one still to be played: the
+        # analysis window starts there so that gameweek 1 is covered before
+        # the season begins rather than being skipped.
         current_gameweek = await get_current_gameweek_id()
         if current_gameweek is None:
             return {"error": "Could not determine current gameweek"}
+
+        next_gameweek = await get_next_gameweek_id()
+        if next_gameweek is None:
+            next_gameweek = current_gameweek + 1
 
         # Base result structure
         result = {
             "entity_type": entity_type,
             "entity_name": entity_name,
             "current_gameweek": current_gameweek,
-            "analysis_range": list(range(current_gameweek + 1, current_gameweek + num_gameweeks + 1))
+            "analysis_range": list(range(next_gameweek, next_gameweek + num_gameweeks))
         }
 
         # Handle each entity type

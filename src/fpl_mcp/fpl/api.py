@@ -136,7 +136,15 @@ class FPLAPI:
             jsonschema.validate(instance=data, schema=schema or self.schema)
             return True
         except jsonschema.exceptions.ValidationError as e:
-            logger.warning(f"Schema validation failed: {e}")
+            # The bundled schema is a snapshot of one season's payload, so it
+            # drifts whenever FPL adds, drops, or nulls a field. Validation is
+            # advisory only, so log a one-line summary rather than dumping the
+            # full report (which runs to tens of thousands of lines).
+            location = "/".join(str(p) for p in e.absolute_path) or "<root>"
+            logger.warning(
+                f"Schema validation failed at {location}: {e.message} "
+                "(advisory only; FPL data is still returned)"
+            )
             return False
     
     @cached("bootstrap_static")
