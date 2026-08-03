@@ -30,8 +30,10 @@ def register_tools(mcp):
         # Determine exact current gameweek status
         current_status = "Not Started"
         if current_gw:
-            deadline = datetime.datetime.strptime(current_gw["deadline_time"], "%Y-%m-%dT%H:%M:%SZ")
-            now = datetime.datetime.utcnow()
+            deadline = datetime.datetime.strptime(
+                current_gw["deadline_time"], "%Y-%m-%dT%H:%M:%SZ"
+            ).replace(tzinfo=datetime.timezone.utc)
+            now = datetime.datetime.now(datetime.timezone.utc)
 
             if now < deadline:
                 current_status = "Upcoming"
@@ -51,7 +53,13 @@ def register_tools(mcp):
             "current_status": current_status,
             "previous_gameweek": previous_gw and previous_gw["id"],
             "next_gameweek": next_gw and next_gw["id"],
-            "season_progress": f"GW {current_gw and current_gw['id']}/38" if current_gw else "Unknown",
+            "season_progress": (
+                f"GW {current_gw['id']}/38" if current_gw
+                # Before the opening deadline nothing is current yet, which
+                # is pre-season rather than an unknown state.
+                else "Pre-season" if next_gw and next_gw["id"] == 1
+                else "Unknown"
+            ),
             "exact_timing": {
                 "current_deadline": current_gw and current_gw["deadline_time"],
                 "next_deadline": next_gw and next_gw["deadline_time"]

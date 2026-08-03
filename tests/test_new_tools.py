@@ -259,3 +259,57 @@ async def test_suggest_captain_requires_team():
         result = await tools["suggest_captain"]()
 
     assert "error" in result
+
+
+async def test_live_scores_reports_gameweek_not_started():
+    """Pre-season the FPL API 404s on event/N/live; that is not an error."""
+    from fpl_mcp.fpl.tools.live import register_tools
+
+    tools = collect(register_tools)
+    with respx.mock:
+        respx.get(f"{BASE}/event/91/live/").mock(return_value=httpx.Response(404))
+        with patch_static():
+            result = await tools["get_gameweek_live_scores"](gameweek_id=91)
+
+    assert "error" not in result
+    assert result["gameweek"] == 91
+    assert result["players"] == []
+    assert "not started yet" in result["note"]
+    # Same shape as a successful response, so clients need no special casing
+    assert result["bonus_added"] is None
+    assert result["players_with_minutes"] == 0
+    await api.close()
+
+
+async def test_dream_team_reports_gameweek_not_played():
+    """Pre-season the FPL API 404s on dream-team/N; that is not an error."""
+    from fpl_mcp.fpl.tools.live import register_tools
+
+    tools = collect(register_tools)
+    with respx.mock:
+        respx.get(f"{BASE}/dream-team/92/").mock(return_value=httpx.Response(404))
+        with patch_static():
+            result = await tools["get_dream_team"](gameweek_id=92)
+
+    assert "error" not in result
+    assert result["gameweek"] == 92
+    assert result["team"] == []
+    assert "not been played yet" in result["note"]
+    # Same shape as a successful response, so clients need no special casing
+    assert result["total_points"] == 0
+    assert result["top_player"]["points"] == 0
+    await api.close()
+
+
+async def test_dream_team_still_reports_real_failures():
+    """A 500 is a genuine failure and must not be masked as 'not played'."""
+    from fpl_mcp.fpl.tools.live import register_tools
+
+    tools = collect(register_tools)
+    with respx.mock:
+        respx.get(f"{BASE}/dream-team/93/").mock(return_value=httpx.Response(500))
+        with patch_static():
+            result = await tools["get_dream_team"](gameweek_id=93)
+
+    assert "error" in result
+    await api.close()
