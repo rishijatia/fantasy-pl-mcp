@@ -1,64 +1,41 @@
 # Bundled JSON schemas
 
-Schemas describing FPL's `bootstrap-static/` payload, used as a sanity check
-that we received FPL-shaped data before the server starts reading it.
+Schemas for FPL's `bootstrap-static/` payload, used to sanity-check the response
+before the server reads it. Validation is advisory: failures are logged, not raised.
 
 ## Versioning
 
-One schema per season, named for the season it was generated from:
+One schema per season, named for the season it describes:
 
 ```
 static_schema_2026-27.json
 ```
 
-`config.resolve_static_schema_path()` picks the newest one (season labels sort
-correctly as plain strings). Set `FPL_STATIC_SCHEMA_PATH` to override.
-
-Keeping old seasons alongside the current one means a schema is never edited in
-place, so it stays an accurate record of what that season's payload looked like.
+`config.resolve_static_schema_path()` selects the newest; set
+`FPL_STATIC_SCHEMA_PATH` to override. Schemas are never edited in place.
 
 ## Regenerating
 
 ```bash
-# Write a schema for the current season
-scripts/generate_static_schema.py
-
-# Check whether live data still matches the bundled schema
-scripts/generate_static_schema.py --check
+scripts/generate_static_schema.py            # write a schema for the current season
+scripts/generate_static_schema.py --check    # check live data against the bundled schema
 ```
 
-Regenerate when:
+Regenerate at the start of each season, or when `--check` fails. Prefer generating
+once the season is under way: pre-season, FPL leaves team `strength` and `form`
+null for every team.
 
-- **A new season starts.** FPL adds and retires fields between seasons.
-- **`--check` fails**, or the server logs `Schema validation failed at ...`.
+## Design
 
-Generate once the season is under way rather than only in pre-season. Pre-season
-data is unrepresentative: FPL leaves team `strength` and `form` null for every
-team until matches are played.
+Three rules keep the schema tolerant of FPL's yearly changes:
 
-## Why the schema is deliberately loose
+1. Types are unioned across all array items, not taken from the first.
+2. Fields that are null everywhere are left unconstrained.
+3. Only fields read by direct subscript are required — those whose absence is a
+   `KeyError` rather than a degraded result. See `CORE_REQUIRED` in the generator.
 
-An earlier schema required all ~105 element fields and took each field's type
-from the *first* array item. It failed on every single fetch of the 2026/27
-payload — FPL had retired the `mng_*` manager fields, and `saves_per_90` reads
-`0` for the first player but `1.62` for a later one. Validation is advisory, so
-nothing broke, but it logged a ~100KB report on every cold fetch, which trains
-you to ignore it.
+This rejects a payload missing `web_name` or `strength_attack_home`, while
+accepting FPL adding or retiring a stat that nothing reads.
 
-The generator now follows three rules:
-
-1. **Union types across every item**, not just the first. A field that is null
-   for any player becomes nullable; an integer that is elsewhere a float becomes
-   a number.
-2. **Fields seen only as null stay unconstrained.** We have no type information
-   about them, and freezing in "always null" breaks once FPL populates them.
-3. **Only a curated core is required** — the fields the server reads and that
-   identify the payload as FPL data. They are listed in `CORE_REQUIRED` in the
-   generator. Everything else is typed but optional, so FPL adding or retiring a
-   stat does not invalidate the schema.
-
-The result accepts legitimate FPL evolution (new stats, retired stats, pre-season
-nulls filling in) while still rejecting an empty object, players with no
-`web_name`, or a `now_cost` that arrived as a string.
-
-If you add a dependency on a new field, add it to `CORE_REQUIRED` and regenerate.
+`CORE_REQUIRED` is not an index of every field the codebase touches; many are read
+with `.get()`. Add to it when you introduce a direct-subscript read, then regenerate.

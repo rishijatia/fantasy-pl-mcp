@@ -16,10 +16,11 @@ Three rules keep the generated schema from rotting:
 2. A field observed as null everywhere is left unconstrained. Pre-season,
    FPL nulls team strength and form for all 20 teams; freezing that in as
    "this field is always null" would break the moment matches are played.
-3. Only a curated core of fields is required -- the ones the server
-   actually depends on and that identify the payload as FPL data. Making
-   all ~105 element fields required is what broke the previous schema when
-   FPL dropped its `mng_*` manager fields between seasons.
+3. Only a curated core of fields is required -- the ones the resource
+   formatters read by direct subscript, where absence is a KeyError rather
+   than a degraded result. Making all ~105 element fields required is what
+   broke the previous schema when FPL dropped its `mng_*` manager fields,
+   which nothing read.
 
 Usage:
     scripts/generate_static_schema.py                  # fetch live, write versioned schema
@@ -43,16 +44,40 @@ SCHEMAS_DIR = pathlib.Path(__file__).resolve().parent.parent / "src" / "fpl_mcp"
 _NUMERIC = {"integer", "number"}
 
 # Fields required at each location, keyed by dotted path from the root
-# ("" is the payload itself, "elements" its player array). These are the
-# fields the server reads and that identify the payload as FPL data;
-# everything else is typed but optional so that FPL adding or retiring a
-# stat does not invalidate the schema.
+# ("" is the payload itself, "elements" its player array).
+#
+# These are the fields the resource formatters reach for by direct
+# subscript, so their absence is a KeyError rather than a degraded result.
+# That is the line: require what the server would crash without, and leave
+# everything else typed but optional. It keeps the schema protective while
+# staying immune to the kind of drift that broke the previous one, which
+# required all ~105 element fields including `mng_*` stats nothing read.
+#
+# If you add a direct-subscript read of a new field, add it here and
+# regenerate. This list is *not* an exhaustive index of every field the
+# codebase touches -- plenty are read with .get() and tolerate absence.
 CORE_REQUIRED = {
     "": ["elements", "element_types", "events", "teams"],
-    "elements": ["id", "web_name", "team", "element_type", "now_cost", "status"],
-    "teams": ["id", "name", "short_name"],
-    "events": ["id", "deadline_time", "is_current", "is_next", "finished"],
-    "element_types": ["id", "singular_name_short"],
+    "elements": [
+        "assists", "bonus", "bps", "chance_of_playing_next_round",
+        "clean_sheets", "cost_change_event", "cost_change_start", "creativity",
+        "element_type", "first_name", "form", "goals_conceded", "goals_scored",
+        "ict_index", "id", "influence", "minutes", "news", "now_cost",
+        "own_goals", "penalties_missed", "penalties_saved", "points_per_game",
+        "red_cards", "saves", "second_name", "selected_by_percent", "starts",
+        "status", "team", "threat", "total_points", "transfers_in_event",
+        "transfers_out_event", "web_name", "yellow_cards",
+    ],
+    "teams": [
+        "code", "id", "name", "position", "short_name", "strength",
+        "strength_attack_away", "strength_attack_home", "strength_defence_away",
+        "strength_defence_home", "strength_overall_away", "strength_overall_home",
+    ],
+    "events": [
+        "data_checked", "deadline_time", "finished", "highest_score", "id",
+        "is_current", "is_next", "is_previous", "name",
+    ],
+    "element_types": ["id"],
 }
 
 

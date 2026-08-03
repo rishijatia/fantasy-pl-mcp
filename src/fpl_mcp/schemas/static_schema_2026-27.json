@@ -141,11 +141,15 @@
             "most_vice_captained": {}
           },
           "required": [
-            "id",
+            "data_checked",
             "deadline_time",
+            "finished",
+            "highest_score",
+            "id",
             "is_current",
             "is_next",
-            "finished"
+            "is_previous",
+            "name"
           ]
         }
       },
@@ -715,9 +719,18 @@
             }
           },
           "required": [
+            "code",
             "id",
             "name",
-            "short_name"
+            "position",
+            "short_name",
+            "strength",
+            "strength_attack_away",
+            "strength_attack_home",
+            "strength_defence_away",
+            "strength_defence_home",
+            "strength_overall_away",
+            "strength_overall_home"
           ]
         }
       },
@@ -783,8 +796,7 @@
             }
           },
           "required": [
-            "id",
-            "singular_name_short"
+            "id"
           ]
         }
       },
@@ -1129,12 +1141,42 @@
             }
           },
           "required": [
-            "id",
-            "web_name",
-            "team",
+            "assists",
+            "bonus",
+            "bps",
+            "chance_of_playing_next_round",
+            "clean_sheets",
+            "cost_change_event",
+            "cost_change_start",
+            "creativity",
             "element_type",
+            "first_name",
+            "form",
+            "goals_conceded",
+            "goals_scored",
+            "ict_index",
+            "id",
+            "influence",
+            "minutes",
+            "news",
             "now_cost",
-            "status"
+            "own_goals",
+            "penalties_missed",
+            "penalties_saved",
+            "points_per_game",
+            "red_cards",
+            "saves",
+            "second_name",
+            "selected_by_percent",
+            "starts",
+            "status",
+            "team",
+            "threat",
+            "total_points",
+            "transfers_in_event",
+            "transfers_out_event",
+            "web_name",
+            "yellow_cards"
           ]
         }
       }

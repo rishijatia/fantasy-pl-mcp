@@ -114,17 +114,35 @@ def test_a_versioned_schema_is_bundled_and_labelled():
     assert doc["schema"]["type"] == "object"
 
 
-def _payload():
-    """A minimal payload shaped like the fields the server depends on."""
+def _sample_for(field_schema):
+    """Produce a value satisfying a generated field schema."""
+    types = field_schema.get("type")
+    if not types:  # unconstrained (a field FPL nulls everywhere)
+        return None
+    if isinstance(types, list):
+        # Prefer a concrete type over null so the sample stays realistic
+        types = next((t for t in types if t != "null"), types[0])
     return {
-        "events": [{"id": 1, "deadline_time": "2026-08-21T17:30:00Z",
-                    "is_current": False, "is_next": True, "finished": False}],
-        "teams": [{"id": 1, "name": "Arsenal", "short_name": "ARS",
-                   "strength": None, "form": None}],
-        "elements": [{"id": 1, "web_name": "Saka", "team": 1, "element_type": 3,
-                      "now_cost": 95, "status": "a"}],
-        "element_types": [{"id": 3, "singular_name_short": "MID"}],
-    }
+        "integer": 1, "number": 1.5, "string": "x",
+        "boolean": False, "array": [], "object": {}, "null": None,
+    }[types]
+
+
+def _payload():
+    """A minimal payload carrying every field the bundled schema requires.
+
+    Built from the schema itself so it cannot drift out of sync as
+    CORE_REQUIRED grows.
+    """
+    schema = _bundled()["schema"]
+    payload = {}
+    for collection in schema.get("required", []):
+        items = schema["properties"][collection]["items"]
+        payload[collection] = [{
+            name: _sample_for(items["properties"][name])
+            for name in items.get("required", [])
+        }]
+    return payload
 
 
 def test_bundled_schema_accepts_representative_payload():
@@ -142,6 +160,27 @@ def test_bundled_schema_tolerates_fpl_evolution():
     extended = _payload()
     extended["elements"][0]["brand_new_stat"] = 1.5
     jsonschema.validate(extended, schema)
+
+    # A stat nothing reads can disappear without invalidating the payload
+    retired = _payload()
+    retired["elements"][0]["region"] = 1
+    jsonschema.validate(retired, schema)
+    retired["elements"][0].pop("region")
+    jsonschema.validate(retired, schema)
+
+
+@pytest.mark.parametrize("collection,field", [
+    ("elements", "web_name"),          # players.py indexes these directly,
+    ("elements", "selected_by_percent"),  # so absence is a KeyError, not a
+    ("teams", "strength_attack_home"),    # degraded result
+    ("events", "deadline_time"),
+])
+def test_bundled_schema_requires_directly_indexed_fields(collection, field):
+    payload = _payload()
+    assert field in payload[collection][0], "fixture should carry this field"
+    payload[collection][0].pop(field)
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(payload, _bundled()["schema"])
 
 
 @pytest.mark.parametrize("mutate,reason", [
