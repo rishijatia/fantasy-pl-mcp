@@ -114,6 +114,25 @@ def test_a_versioned_schema_is_bundled_and_labelled():
     assert doc["schema"]["type"] == "object"
 
 
+@pytest.mark.parametrize("location", sorted(gen.CORE_REQUIRED))
+def test_every_core_required_field_reached_the_bundled_schema(location):
+    """Guard against a typo in CORE_REQUIRED failing open.
+
+    The generator only emits a required field if it is present on every
+    item, so a misspelled name is silently dropped rather than producing an
+    unsatisfiable schema. That would leave a field the server subscripts
+    directly unprotected, with nothing to notice.
+    """
+    schema = _bundled()["schema"]
+    node = schema if location == "" else schema["properties"][location]["items"]
+
+    missing = set(gen.CORE_REQUIRED[location]) - set(node.get("required", []))
+    assert not missing, (
+        f"{sorted(missing)} listed in CORE_REQUIRED[{location!r}] but absent from "
+        "the bundled schema - check the spelling, or regenerate if FPL dropped it"
+    )
+
+
 def _sample_for(field_schema):
     """Produce a value satisfying a generated field schema."""
     types = field_schema.get("type")
