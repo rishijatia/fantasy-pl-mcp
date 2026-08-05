@@ -1,5 +1,7 @@
 # Fantasy Premier League MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Frishijatia%2Ffantasy-pl-mcp.svg)](https://mcptoplist.com/server/glama%2Frishijatia%2Ffantasy-pl-mcp)
+
 [![PyPI version](https://badge.fury.io/py/fpl-mcp.svg)](https://badge.fury.io/py/fpl-mcp)
 [![Package Check](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml/badge.svg)](https://github.com/rishijatia/fantasy-pl-mcp/actions/workflows/package-check.yml)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/fpl-mcp)](https://pypi.org/project/fpl-mcp/)
