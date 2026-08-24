@@ -26,7 +26,7 @@ classifiers = [
 keywords = ["fantasy-premier-league", "fpl", "mcp", "claude", "ai", "football", "soccer"]
 requires-python = ">=3.10"
 dependencies = [
-    "mcp>=1.2.0",
+    "mcp>=1.2.0,<2.0.0",
     "httpx>=0.24.0",
     "python-dotenv",
     "diskcache",
@@ -44,7 +44,7 @@ dev = [
     "mypy>=1.0.0",
     "build",
     "twine",
-    "mcp[cli]>=1.2.0",
+    "mcp[cli]>=1.2.0,<2.0.0",
 ]
 
 [project.scripts]

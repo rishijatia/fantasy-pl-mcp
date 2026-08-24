@@ -51,3 +51,10 @@ htmlcov/
 .pytest_cache/
 
 uv.lock
+# FPL credentials and tokens — never commit these
+current_bearer_token.txt
+*bearer_token*.txt
+tokens.enc
+credentials.enc
+pending_login.json
+.fpl-mcp/
