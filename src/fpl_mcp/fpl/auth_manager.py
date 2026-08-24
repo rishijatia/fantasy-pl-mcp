@@ -2,12 +2,15 @@
 import logging
 import requests
 import asyncio
+import pathlib
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 from .cache import cache
 from .rate_limiter import RateLimiter
 from .credential_manager import CredentialManager
+from . import oauth
 from ..config import (
     FPL_API_BASE_URL, 
     FPL_USER_AGENT,
@@ -143,8 +146,32 @@ class FPLAuthManager:
         
         return response.json()
     
+    async def make_public_request(self, url: str) -> Dict[str, Any]:
+        """Make an unauthenticated request to a public FPL endpoint
+
+        Most FPL endpoints (entry details, picks, history, league standings)
+        are public and need no credentials. Only /my-team/ requires auth, so
+        routing these through the login flow would fail needlessly.
+        """
+        await self._rate_limiter.acquire()
+
+        headers = {
+            "User-Agent": FPL_USER_AGENT,
+            "Accept": "application/json",
+        }
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(url, headers=headers)
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
     async def get_my_team(self, team_id: Optional[int] = None) -> Dict[str, Any]:
-        """Get current team for the authenticated user"""
+        """Get current team for the authenticated user using Bearer token"""
         team_id = team_id or self._team_id
         if not team_id:
             raise ValueError("Team ID must be provided")
@@ -156,8 +183,9 @@ class FPLAuthManager:
             # Use cached data if it's less than 60 seconds old
             return cached_data[1]
             
+        # Use Bearer token for /my-team/ endpoint
         url = f"{FPL_API_BASE_URL}/my-team/{team_id}/"
-        data = await self.make_authed_request(url)
+        data = await self.make_bearer_request(url)
         
         # Cache data for 60 seconds
         cache.cache[cache_key] = (datetime.now().timestamp(), data)
@@ -178,7 +206,7 @@ class FPLAuthManager:
             return cached_data[1]
             
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/event/{gameweek}/picks/"
-        data = await self.make_authed_request(url)
+        data = await self.make_public_request(url)
         
         # Cache this data indefinitely as historical data doesn't change
         cache.cache[cache_key] = (datetime.now().timestamp(), data)
@@ -192,7 +220,113 @@ class FPLAuthManager:
             raise ValueError("Team ID must be provided")
             
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/"
-        return await self.make_authed_request(url)
+        return await self.make_public_request(url)
+
+    async def get_bearer_token(self) -> Optional[str]:
+        """Get a Bearer token, refreshing via OAuth when possible.
+
+        Resolution order:
+          1. A stored OAuth access token that is still valid.
+          2. A refresh_token exchange for a new access token.
+          3. A manually supplied token (file or FPL_BEARER_TOKEN).
+        """
+        # 1/2. Stored OAuth tokens, refreshed on demand.
+        tokens = self._credential_manager.load_tokens()
+        if tokens:
+            if not oauth.is_expired(tokens):
+                return tokens["access_token"]
+
+            refresh_token = tokens.get("refresh_token")
+            if refresh_token:
+                logger.info("Access token expired; refreshing")
+                try:
+                    loop = asyncio.get_event_loop()
+                    new_tokens = await loop.run_in_executor(
+                        None, lambda: oauth.refresh_tokens(refresh_token)
+                    )
+                    self._credential_manager.store_tokens(new_tokens)
+                    logger.info("Access token refreshed")
+                    return new_tokens["access_token"]
+                except oauth.OAuthError as e:
+                    logger.error(f"Token refresh failed: {e}")
+                    logger.info("Run 'fpl-mcp-config login' to sign in again")
+            else:
+                logger.warning(
+                    "Stored token has expired and no refresh_token is available"
+                )
+
+        # 3. Manually supplied token, for callers who paste one in.
+        token_file = pathlib.Path(__file__).parent.parent.parent.parent / "current_bearer_token.txt"
+        if token_file.exists():
+            try:
+                with open(token_file, 'r') as f:
+                    file_token = f.read().strip()
+                if file_token:
+                    if oauth.is_jwt_expired(file_token):
+                        logger.warning(
+                            f"Ignoring expired Bearer token in {token_file.name}; "
+                            "delete it or run 'fpl-mcp-config login'"
+                        )
+                    else:
+                        logger.info("Using Bearer token from file")
+                        return file_token
+            except Exception as e:
+                logger.warning(f"Could not read token file: {e}")
+
+        env_token = os.getenv("FPL_BEARER_TOKEN")
+        if env_token:
+            env_token = env_token.strip()
+            if oauth.is_jwt_expired(env_token):
+                logger.warning("Ignoring expired FPL_BEARER_TOKEN")
+            else:
+                logger.info("Using Bearer token from environment variable")
+                return env_token
+
+        logger.warning("No Bearer token available.")
+        logger.info("Run 'fpl-mcp-config login' to authenticate with FPL.")
+
+        return None
+
+    def store_oauth_tokens(self, tokens: Dict[str, Any]) -> None:
+        """Persist tokens obtained from the interactive login flow"""
+        self._credential_manager.store_tokens(tokens)
+
+    def load_oauth_tokens(self) -> Optional[Dict[str, Any]]:
+        """Return stored OAuth tokens, if any"""
+        return self._credential_manager.load_tokens()
+
+    async def make_bearer_request(self, url: str) -> Dict[str, Any]:
+        """Make request using Bearer token for /my-team/ endpoints"""
+        bearer_token = await self.get_bearer_token()
+        
+        if not bearer_token:
+            raise ValueError("Could not obtain Bearer token")
+        
+        headers = {
+            'Authorization': f'Bearer {bearer_token}',
+            'User-Agent': FPL_USER_AGENT,
+            'Accept': 'application/json'
+        }
+        
+        await self._rate_limiter.acquire()
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(url, headers=headers)
+        )
+        
+        response.raise_for_status()
+        return response.json()
+
+    async def get_my_team_bearer(self, team_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get my-team data using Bearer token (the endpoint you need!)"""
+        team_id = team_id or self._team_id
+        if not team_id:
+            raise ValueError("Team ID must be provided")
+            
+        url = f"{FPL_API_BASE_URL}/my-team/{team_id}/"
+        return await self.make_bearer_request(url)
         
     async def close(self):
         """Close the session"""

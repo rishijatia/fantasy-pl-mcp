@@ -166,23 +166,46 @@ async def check_fpl_authentication() -> Dict[str, Any]:
                 "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
             }
         
-        # Try to get basic team info as authentication test
+        # Public entry data proves nothing about authentication, but it is
+        # useful context to report alongside the real check below.
+        profile = {}
         try:
             entry_data = await auth_manager.get_entry_data()
-            
-            return {
-                "authenticated": True,
+            profile = {
                 "team_name": entry_data.get("name"),
                 "manager_name": f"{entry_data.get('player_first_name')} {entry_data.get('player_last_name')}",
                 "overall_rank": entry_data.get("summary_overall_rank"),
-                "team_id": team_id
+                "team_id": team_id,
+                "public_data_available": True,
             }
+        except Exception as e:
+            logger.warning(f"Public entry lookup failed: {e}")
+            profile = {"team_id": team_id, "public_data_available": False}
+
+        # Authentication is only proven by an endpoint that requires a token.
+        bearer_token = await auth_manager.get_bearer_token()
+        if not bearer_token:
+            return {
+                "authenticated": False,
+                "error": "No valid access token available",
+                "setup_instructions": "Run 'fpl-mcp-config login' to sign in to FPL",
+                **profile,
+            }
+
+        try:
+            await auth_manager.get_my_team(team_id)
         except Exception as e:
             return {
                 "authenticated": False,
-                "error": f"Authentication failed: {str(e)}",
-                "setup_instructions": "Check your FPL credentials and ensure they are correct"
+                "error": f"Access token was rejected by /my-team/: {e}",
+                "setup_instructions": "Run 'fpl-mcp-config login' to sign in again",
+                **profile,
             }
+
+        return {
+            "authenticated": True,
+            **profile,
+        }
             
     except Exception as e:
         logger.error(f"Authentication check failed: {e}")

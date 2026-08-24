@@ -31,7 +31,7 @@ async def get_league_standings_data(league_id: int) -> Dict[str, Any]:
     
     # Get league data
     try:
-        data = await auth_manager.make_authed_request(url)
+        data = await auth_manager.make_public_request(url)
         return data
     except Exception as e:
         logger.error(f"Error fetching league standings: {e}")
@@ -169,7 +169,7 @@ async def get_teams_historical_data(team_ids: List[int], start_gw: Optional[int]
             else:
                 # Fetch fresh data if not cached
                 url = f"{FPL_API_BASE_URL}/entry/{team_id}/history/"
-                history_data = await auth_manager.make_authed_request(url)
+                history_data = await auth_manager.make_public_request(url)
                 
                 # Cache the data
                 cache.cache[cache_key] = (current_time, history_data)

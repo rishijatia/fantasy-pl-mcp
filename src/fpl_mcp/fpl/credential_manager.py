@@ -22,6 +22,7 @@ class CredentialManager:
     def __init__(self):
         self._config_dir = Path.home() / ".fpl-mcp"
         self._encrypted_file = self._config_dir / "credentials.enc"
+        self._token_file = self._config_dir / "tokens.enc"
         self._legacy_env_file = self._config_dir / ".env"
         self._legacy_json_file = self._config_dir / "config.json"
 
@@ -211,6 +212,51 @@ class CredentialManager:
         except Exception as e:
             logger.error(f"Failed to migrate legacy credentials: {e}")
             return False
+
+    def store_tokens(self, tokens: Dict[str, str]) -> None:
+        """Store OAuth tokens encrypted with the same scheme as credentials"""
+        try:
+            encrypted_data = self._encrypt_data(tokens)
+
+            with open(self._token_file, "wb") as f:
+                f.write(encrypted_data)
+
+            os.chmod(self._token_file, 0o600)
+
+            logger.info(f"OAuth tokens stored securely in {self._token_file}")
+
+        except Exception as e:
+            logger.error(f"Failed to store OAuth tokens: {e}")
+            raise
+
+    def load_tokens(self) -> Optional[Dict[str, str]]:
+        """Load stored OAuth tokens, or None if absent/unreadable"""
+        if not self._token_file.exists():
+            return None
+
+        try:
+            with open(self._token_file, "rb") as f:
+                encrypted_data = f.read()
+
+            return self._decrypt_data(encrypted_data)
+
+        except Exception as e:
+            logger.error(f"Failed to decrypt OAuth tokens: {e}")
+            return None
+
+    def has_tokens(self) -> bool:
+        """Check if OAuth tokens are stored"""
+        return self._token_file.exists()
+
+    def clear_tokens(self) -> None:
+        """Remove stored OAuth tokens"""
+        try:
+            if self._token_file.exists():
+                self._token_file.unlink()
+                logger.info("OAuth tokens cleared")
+        except Exception as e:
+            logger.error(f"Failed to clear OAuth tokens: {e}")
+            raise
 
     def has_credentials(self) -> bool:
         """Check if any credentials are available"""
