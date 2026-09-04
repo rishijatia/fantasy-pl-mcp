@@ -195,18 +195,22 @@ npx @modelcontextprotocol/inspector python -m fpl_mcp
 - `get_dream_team` - The official highest-scoring XI for a gameweek
 
 ### Your team and advice
+
+Looking up any team, manager or classic league by its public ID works without
+credentials. Only your own current-gameweek squad needs them.
+
 - `suggest_captain` - Rank your squad by captain score with per-component reasoning
 - `check_fpl_authentication` - Check if FPL authentication is working correctly
 - `update_fpl_credentials` - Update your stored FPL credentials from within a chat
 - `get_my_team` - View your authenticated team (requires authentication)
 - `get_my_current_team` - View your current team for the active gameweek (requires authentication)
-- `get_team` - View any team with a specific ID (requires authentication)
-- `get_manager` - Get manager details for a specific team ID (requires authentication)
-- `get_manager_info` - Get manager details (requires authentication)
+- `get_team` - View any team with a specific ID
+- `get_manager` - Get manager details for a specific team ID
+- `get_manager_info` - Get manager details
 - `get_manager_transfer_history` - Get a manager's full transfer history
 
 ### Leagues
-- `get_league_standings` - Get standings for a classic league (requires authentication)
+- `get_league_standings` - Get standings for a classic league
 - `get_league_analytics` - Analyze a league's managers, ownership trends, and performance
 
 ## Prompt Templates
@@ -234,7 +238,8 @@ FPL migrated its login to PingOne (Ping Identity) OIDC, so authentication now us
 short-lived access tokens automatically, and requests are sent with an
 `X-API-Authorization: Bearer` header.
 
-To use features requiring authentication (like accessing your team or private leagues), set up
+To use features requiring authentication (your own current-gameweek squad, with selling
+prices, bank and chips), set up
 your refresh token:
 
 ```bash

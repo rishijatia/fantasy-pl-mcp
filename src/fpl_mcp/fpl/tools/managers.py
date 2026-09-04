@@ -24,7 +24,13 @@ async def get_manager_data(team_id: Optional[int] = None) -> Dict[str, Any]:
         team_id = auth_manager.team_id
         if not team_id:
             return {
-                "error": "No team ID specified and no default team ID found"
+                "error": "No team ID specified and no default team ID found",
+                "suggestion": (
+                    "Pass team_id. To find yours: sign in at "
+                    "fantasy.premierleague.com, open Points, and copy the "
+                    "number after /entry/ in the address bar. No login is "
+                    "needed to look up any team by its ID."
+                ),
             }
 
     # Get manager data

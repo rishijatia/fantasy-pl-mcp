@@ -32,7 +32,9 @@ async def get_league_standings_data(league_id: int) -> Dict[str, Any]:
     
     # Get league data
     try:
-        data = await auth_manager.make_authed_request(url)
+        # Classic league standings are a public endpoint: anyone with the
+        # league ID can read them, no login required.
+        data = await auth_manager.make_optional_auth_request(url)
         return data
     except Exception as e:
         logger.error(f"Error fetching league standings: {e}")
@@ -162,7 +164,7 @@ async def get_teams_historical_data(team_ids: List[int], start_gw: Optional[int]
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/history/"
         return await cache.get_or_fetch(
             f"team_history_{team_id}",
-            fetch_func=lambda: auth_manager.make_authed_request(url),
+            fetch_func=lambda: auth_manager.make_optional_auth_request(url),
             ttl=3600,
         )
 

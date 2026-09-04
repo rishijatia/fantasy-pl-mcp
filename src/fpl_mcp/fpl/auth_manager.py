@@ -217,7 +217,72 @@ class FPLAuthManager:
         response.raise_for_status()
 
         return response.json()
-    
+
+    @property
+    def has_credentials(self) -> bool:
+        """Whether a refresh token is stored.
+
+        This is not the same as `is_authenticated`, which reports on a live
+        access token. This answers "could we authenticate if we tried?", and
+        is what the optional-auth path below branches on.
+        """
+        return bool(self._refresh_token)
+
+    async def make_public_request(self, url: str) -> Dict[str, Any]:
+        """Make an unauthenticated GET to a public FPL endpoint.
+
+        Shares the rate limiter with the authenticated path so both draw from
+        one budget against FPL's API.
+        """
+        await self._rate_limiter.acquire()
+
+        headers = {"User-Agent": FPL_USER_AGENT}
+
+        # requests.Session is reused when one already exists (it may have been
+        # created by the auth flow); otherwise a plain session is fine.
+        session = self._session
+        if session is None:
+            session = requests.Session()
+            self._session = session
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: session.get(url, headers=headers),
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    async def make_optional_auth_request(self, url: str) -> Dict[str, Any]:
+        """GET a PUBLIC FPL endpoint, using credentials only if we have them.
+
+        Most FPL endpoints this server reads — /entry/, /entry/{id}/history/,
+        /entry/{id}/event/{gw}/picks/, /leagues-classic/{id}/standings/ — are
+        public and need no login. Requiring authentication for them locked out
+        anyone who just wants to look up a team or a mini-league by its public
+        ID. This sends the authenticated request when credentials are stored
+        (preserving prior behaviour for existing users) and falls back to an
+        unauthenticated request when they are not, rather than raising.
+
+        If an authenticated attempt fails for a credential reason (expired or
+        revoked refresh token), it falls back to the public request instead of
+        surfacing an auth error for data that never needed auth.
+        """
+        if self.has_credentials:
+            try:
+                return await self.make_authed_request(url)
+            except Exception as e:
+                logger.warning(
+                    "Authenticated request to %s failed (%s); retrying "
+                    "unauthenticated, as this endpoint is public",
+                    url,
+                    e,
+                )
+
+        return await self.make_public_request(url)
+
     async def get_my_team(self, team_id: Optional[int] = None) -> Dict[str, Any]:
         """Get current team for the authenticated user"""
         team_id = team_id or self._team_id
@@ -249,18 +314,25 @@ class FPLAuthManager:
             ttl = 300  # 5 minutes
         return await cache.get_or_fetch(
             f"team_gw_{team_id}_{gameweek}",
-            fetch_func=lambda: self.make_authed_request(url),
+            fetch_func=lambda: self.make_optional_auth_request(url),
             ttl=ttl,
         )
-    
+
     async def get_entry_data(self, team_id: Optional[int] = None) -> Dict[str, Any]:
-        """Get general information about a team entry"""
+        """Get general information about a team entry.
+
+        Public endpoint: works for any team id without credentials.
+        """
         team_id = team_id or self._team_id
         if not team_id:
-            raise ValueError("Team ID must be provided")
-            
+            raise ValueError(
+                "Team ID must be provided. Find yours by signing in at "
+                "fantasy.premierleague.com, opening Points, and reading the "
+                "number after /entry/ in the address bar."
+            )
+
         url = f"{FPL_API_BASE_URL}/entry/{team_id}/"
-        return await self.make_authed_request(url)
+        return await self.make_optional_auth_request(url)
         
     async def close(self):
         """Close the session"""
