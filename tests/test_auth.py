@@ -113,7 +113,7 @@ class TestCredentialManager:
 class TestAuthenticate:
     def test_missing_refresh_token_raises(self, isolated_home):
         manager = FPLAuthManager()
-        with pytest.raises(ValueError, match="fpl-mcp-config setup"):
+        with pytest.raises(ValueError, match="login_to_fpl"):
             asyncio.run(manager._authenticate())
 
     def test_success_sets_token_and_persists_rotation(self, isolated_home):

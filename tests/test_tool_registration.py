@@ -8,6 +8,7 @@ EXPECTED_TOOLS = {
     "get_manager",
     "check_fpl_authentication",
     "update_fpl_credentials",
+    "login_to_fpl",
     # managers.py
     "get_manager_info",
     # leagues.py

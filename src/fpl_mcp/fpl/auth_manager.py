@@ -43,6 +43,9 @@ class FPLAuthManager:
         self._access_token = None
         self._access_token_expiry = None  # datetime when the access token expires
 
+        # In-flight browser login, shared across tool calls
+        self._login_task: asyncio.Task | None = None
+
         # Shared rate limiter so authed and public requests draw from one budget
         self._rate_limiter = rate_limiter
 
@@ -56,7 +59,45 @@ class FPLAuthManager:
         self._session = None
         self._access_token = None
         self._access_token_expiry = None
-    
+
+    async def adopt_refresh_token(self, refresh_token: str, team_id: str | None = None) -> str:
+        """Authenticate with a freshly captured refresh token and persist it.
+
+        When team_id is omitted it is looked up from /api/me/, so a browser
+        login needs no other input. Returns the team ID that was stored.
+        """
+        self._refresh_token = refresh_token
+        self._access_token = None
+        self._access_token_expiry = None
+        await self._authenticate()
+
+        if not team_id:
+            me = await self.make_authed_request(f"{FPL_API_BASE_URL}/me/")
+            entry = (me.get("player") or {}).get("entry")
+            if not entry:
+                raise ValueError(
+                    "Logged in, but this FPL account has no team yet. Create a team "
+                    "on fantasy.premierleague.com first."
+                )
+            team_id = str(entry)
+
+        # _authenticate rotated the token; store the live one with the team ID.
+        self._team_id = str(team_id)
+        self._credential_manager.store_credentials(self._refresh_token, self._team_id)
+        return self._team_id
+
+    def start_browser_login(self) -> asyncio.Task:
+        """Open the browser login, or return the one already in progress."""
+        if self._login_task is None or self._login_task.done():
+            self._login_task = asyncio.create_task(self._browser_login())
+        return self._login_task
+
+    async def _browser_login(self) -> str:
+        from .browser_login import capture_refresh_token
+
+        token = await capture_refresh_token()
+        return await self.adopt_refresh_token(token)
+
     @property
     def team_id(self) -> str | None:
         """Get the authenticated user's team ID"""
@@ -115,7 +156,7 @@ class FPLAuthManager:
             logger.error("FPL refresh token not found")
             raise ValueError(
                 "FPL authentication requires a refresh token. "
-                "Run 'fpl-mcp-config setup' to configure it."
+                "Call the login_to_fpl tool (or run 'fpl-mcp-config login') to sign in."
             )
 
         try:
@@ -152,11 +193,9 @@ class FPLAuthManager:
                     detail = response.text[:200]
                 if response.status_code in (400, 401):
                     raise ValueError(
-                        "FPL refresh token is invalid or expired. Provide a "
-                        "fresh one via the update_fpl_credentials tool (copy "
-                        "the 'oidc.user' value from Local storage on "
-                        "fantasy.premierleague.com) or re-run "
-                        f"'fpl-mcp-config setup'. ({detail})"
+                        "FPL refresh token is invalid or expired. Call the "
+                        "login_to_fpl tool to sign in again through the browser "
+                        f"(or run 'fpl-mcp-config login'). ({detail})"
                     )
                 raise ValueError(f"Failed to authenticate with FPL: {detail}")
 
@@ -180,7 +219,7 @@ class FPLAuthManager:
                     # and is locked out until setup is re-run.
                     logger.error(
                         "Failed to persist rotated refresh token — the next run "
-                        "will fail to authenticate and need 'fpl-mcp-config setup' "
+                        "will fail to authenticate and need 'fpl-mcp-config login' "
                         f"re-run: {e}"
                     )
 

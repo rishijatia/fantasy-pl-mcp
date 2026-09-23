@@ -1,4 +1,5 @@
 # src/fpl_mcp/fpl/tools/team.py
+import asyncio
 import logging
 from typing import Any
 
@@ -268,7 +269,7 @@ def register_tools(mcp):
             if not team_id:
                 return {
                     "error": "No default team ID found in credentials",
-                    "suggestion": "Check your authentication settings or use get_team with an explicit team_id",
+                    "suggestion": "Call login_to_fpl to sign in, or use get_team with an explicit team_id",
                 }
 
             logger.info(f"Getting authenticated user's team: {team_id}")
@@ -313,7 +314,7 @@ def register_tools(mcp):
             if not team_id:
                 return {
                     "error": "No team ID found in credentials",
-                    "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials",
+                    "setup_instructions": "Call login_to_fpl to sign in through the browser",
                 }
 
             data = await auth_manager.get_my_team(int(team_id))
@@ -353,8 +354,46 @@ def register_tools(mcp):
             logger.error(f"Error in get_my_current_team: {e}")
             return {
                 "error": str(e),
-                "suggestion": "This endpoint requires valid FPL credentials; run 'fpl-mcp-config setup'",
+                "suggestion": "This endpoint requires FPL login; call login_to_fpl to sign in through the browser",
             }
+
+    @mcp.tool()
+    async def login_to_fpl() -> dict[str, Any]:
+        """Log in to FPL by opening a browser window for the user to sign in.
+
+        Use this whenever an authenticated tool (get_my_current_team,
+        get_my_team, check_fpl_authentication) reports missing, invalid or
+        expired credentials. A Chrome window opens at fantasy.premierleague.com;
+        the user signs in there as normal and the window closes by itself. The
+        refresh token and team ID are captured and stored automatically, so
+        nothing needs to be copied or pasted.
+
+        This waits up to about 45 seconds. If it returns status "waiting",
+        tell the user to finish signing in and call this tool again; it picks
+        up the same login rather than opening a second window.
+
+        Returns:
+            status "logged_in" with the team ID, "waiting", or "failed" with an error
+        """
+        auth_manager = get_auth_manager()
+        task = auth_manager.start_browser_login()
+        try:
+            team_id = await asyncio.wait_for(asyncio.shield(task), timeout=45)
+        except asyncio.TimeoutError:
+            return {
+                "status": "waiting",
+                "message": "A browser window is open at fantasy.premierleague.com. Ask the "
+                           "user to sign in there, then call login_to_fpl again.",
+            }
+        except Exception as e:
+            logger.error(f"Browser login failed: {e}")
+            return {"status": "failed", "error": str(e)}
+
+        return {
+            "status": "logged_in",
+            "team_id": team_id,
+            "message": "Credentials captured and stored; authenticated tools are ready.",
+        }
 
     @mcp.tool()
     async def check_fpl_authentication() -> dict[str, Any]:
@@ -371,7 +410,7 @@ def register_tools(mcp):
                 return {
                     "authenticated": False,
                     "error": "No team ID found in credentials",
-                    "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials",
+                    "setup_instructions": "Call login_to_fpl to sign in through the browser",
                 }
 
             # Try to get basic team info as authentication test
@@ -389,7 +428,7 @@ def register_tools(mcp):
                 return {
                     "authenticated": False,
                     "error": f"Authentication failed: {str(e)}",
-                    "setup_instructions": "Check your FPL credentials and ensure they are correct",
+                    "setup_instructions": "Call login_to_fpl to sign in again through the browser",
                 }
 
         except Exception as e:
@@ -397,7 +436,7 @@ def register_tools(mcp):
             return {
                 "authenticated": False,
                 "error": str(e),
-                "setup_instructions": "Run 'fpl-mcp-config setup' to configure your FPL credentials"
+                "setup_instructions": "Call login_to_fpl to sign in through the browser"
             }
 
     @mcp.tool()

@@ -110,3 +110,56 @@ async def test_current_gameweek_picks_cached_briefly():
 
 async def test_unknown_current_gameweek_uses_short_ttl():
     assert await _picks_ttl(current_gw=None, requested_gw=7) == 300
+
+
+async def test_adopt_refresh_token_discovers_team_and_stores_rotated_token():
+    """A browser-captured token needs no team ID: it comes from /api/me/, and
+    the rotated refresh token (not the captured one) is what gets persisted."""
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    session = _mock_session()
+    me = AsyncMock(return_value={"player": {"entry": 2233768}})
+
+    with patch("fpl_mcp.fpl.auth_manager.requests.Session", return_value=session), patch.object(
+        type(manager), "make_authed_request", new=me
+    ):
+        team_id = await manager.adopt_refresh_token("captured-token")
+
+    assert team_id == "2233768"
+    assert manager.team_id == "2233768"
+    assert me.call_args.args[0].endswith("/me/")
+    manager._credential_manager.store_credentials.assert_called_with("rt-new", "2233768")
+
+
+async def test_adopt_refresh_token_without_team_raises():
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    with patch("fpl_mcp.fpl.auth_manager.requests.Session", return_value=_mock_session()), patch.object(
+        type(manager), "make_authed_request", new=AsyncMock(return_value={"player": None})
+    ):
+        with pytest.raises(ValueError, match="no team"):
+            await manager.adopt_refresh_token("captured-token")
+
+
+async def test_browser_login_is_shared_across_calls():
+    """A second login_to_fpl call must reuse the open window, not launch another."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    gate = asyncio.Event()
+
+    async def capture():
+        await gate.wait()
+        return "captured-token"
+
+    with patch("fpl_mcp.fpl.browser_login.capture_refresh_token", new=capture), patch.object(
+        type(manager), "adopt_refresh_token", new=AsyncMock(return_value="42")
+    ):
+        first = manager.start_browser_login()
+        second = manager.start_browser_login()
+        assert first is second
+        gate.set()
+        assert await first == "42"

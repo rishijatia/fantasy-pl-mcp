@@ -148,6 +148,24 @@ def setup_credentials():
         return False
 
 
+async def browser_login():
+    """Sign in through a browser window and store the captured credentials"""
+    from .fpl.auth_manager import get_auth_manager
+
+    print("Opening a browser window at fantasy.premierleague.com.")
+    print("Sign in there; the window closes by itself once you're logged in.")
+    auth_manager = get_auth_manager()
+    try:
+        team_id = await auth_manager.start_browser_login()
+        print(f"Logged in. Credentials stored for team {team_id}.")
+        return True
+    except Exception as e:
+        print(f"Login failed: {e}")
+        return False
+    finally:
+        await auth_manager.close()
+
+
 async def test_auth():
     """Test authentication with FPL API"""
     try:
@@ -190,12 +208,15 @@ def main():
     parser = argparse.ArgumentParser(description="FPL MCP Server Configuration")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     
-    subparsers.add_parser("setup", help="Set up FPL credentials")
+    subparsers.add_parser("login", help="Sign in to FPL through a browser window")
+    subparsers.add_parser("setup", help="Set up FPL credentials by pasting a refresh token")
     subparsers.add_parser("test", help="Test FPL authentication")
 
     args = parser.parse_args()
 
-    if args.command == "setup":
+    if args.command == "login":
+        asyncio.run(browser_login())
+    elif args.command == "setup":
         setup_credentials()
     elif args.command == "test":
         asyncio.run(test_auth())

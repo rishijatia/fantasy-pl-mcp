@@ -33,6 +33,7 @@ dependencies = [
     "jsonschema",
     "requests",
     "cryptography",
+    "websockets>=12",
 ]
 
 [project.optional-dependencies]
