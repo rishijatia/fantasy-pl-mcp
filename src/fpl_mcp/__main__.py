@@ -19,7 +19,7 @@ logger = logging.getLogger("fpl-mcp-server")
 mcp = FastMCP(
     name="Fantasy Premier League",
     instructions="Access Fantasy Premier League data and tools",
-    dependencies=["httpx", "diskcache", "jsonschema"],
+    dependencies=["httpx", "diskcache-community>=5.8.4", "jsonschema"],
 )
 
 # Import modules that use the mcp variable

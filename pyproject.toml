@@ -31,7 +31,7 @@ dependencies = [
     "mcp>=1.2.0,<2.0.0",
     "httpx>=0.24.0",
     "python-dotenv",
-    "diskcache",
+    "diskcache-community>=5.8.4",
     "jsonschema",
     "requests",
     "cryptography",

@@ -3,6 +3,8 @@
 import asyncio
 import tempfile
 
+from diskcache_community import Cache, Disk
+
 from fpl_mcp.fpl.cache import FPLCache
 
 
@@ -93,3 +95,28 @@ async def test_falsy_values_are_cached():
     assert await cache.get_or_fetch("key", fetch) == []
     assert await cache.get_or_fetch("key", fetch) == []
     assert calls == 1
+
+
+planted_calls = []
+
+
+def planted():
+    planted_calls.append(True)
+    return {"n": "planted"}
+
+
+class Planted:
+    def __reduce__(self):
+        return (planted, ())
+
+
+async def test_planted_pickle_is_a_miss():
+    cache = make_cache()
+    with Cache(cache.cache.directory, disk=Disk) as other_writer:
+        other_writer.set("v2:key", Planted())
+
+    async def fetch():
+        return {"n": 1}
+
+    assert await cache.get_or_fetch("key", fetch) == {"n": 1}
+    assert planted_calls == []

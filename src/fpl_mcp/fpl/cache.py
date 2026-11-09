@@ -2,7 +2,7 @@ import time
 import os
 import pathlib
 from typing import Any, Callable, Dict, Optional, TypeVar, List
-from diskcache import Cache
+from diskcache_community import Cache, SafeDisk
 import asyncio
 from functools import wraps
 import json
@@ -29,7 +29,7 @@ class FPLCache:
         """
         # Ensure the cache directory exists
         os.makedirs(cache_dir, exist_ok=True)
-        self.cache = Cache(str(cache_dir))
+        self.cache = Cache(str(cache_dir), disk=SafeDisk.with_options(on_error="miss"))
         self.default_ttl = default_ttl
         self._locks: Dict[str, asyncio.Lock] = {}
         self._locks_guard = asyncio.Lock()
